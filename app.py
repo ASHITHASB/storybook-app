@@ -145,19 +145,14 @@ def is_existing_user(email: str) -> bool:
 
 
 def save_user(email: str, phone: str):
-    # Testers: upsert so repeated sign-ins don't error on the unique constraint
+    # Testers bypass DB entirely — no insert needed
     if is_tester(email):
-        supabase.table("users").upsert({
-            "email": email,
-            "phone": phone,
-            "created_at": datetime.utcnow().isoformat(),
-        }, on_conflict="email").execute()
-    else:
-        supabase.table("users").insert({
-            "email": email,
-            "phone": phone,
-            "created_at": datetime.utcnow().isoformat(),
-        }).execute()
+        return
+    supabase.table("users").insert({
+        "email": email,
+        "phone": phone,
+        "created_at": datetime.utcnow().isoformat(),
+    }).execute()
 
 # ==============================
 # SIGNUP
