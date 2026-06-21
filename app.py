@@ -127,17 +127,37 @@ for key, default in {
 # USER STORAGE (Supabase)
 # ==============================
 
+# Comma-separated tester emails that bypass the one-story limit
+TESTER_EMAILS = {
+    e.strip().lower()
+    for e in st.secrets.get("TESTER_EMAILS", "").split(",")
+    if e.strip()
+}
+
+
+def is_tester(email: str) -> bool:
+    return email.strip().lower() in TESTER_EMAILS
+
+
 def is_existing_user(email: str) -> bool:
     result = supabase.table("users").select("email").eq("email", email).execute()
     return len(result.data) > 0
 
 
 def save_user(email: str, phone: str):
-    supabase.table("users").insert({
-        "email": email,
-        "phone": phone,
-        "created_at": datetime.utcnow().isoformat(),
-    }).execute()
+    # Testers: upsert so repeated sign-ins don't error on the unique constraint
+    if is_tester(email):
+        supabase.table("users").upsert({
+            "email": email,
+            "phone": phone,
+            "created_at": datetime.utcnow().isoformat(),
+        }, on_conflict="email").execute()
+    else:
+        supabase.table("users").insert({
+            "email": email,
+            "phone": phone,
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
 
 # ==============================
 # SIGNUP
@@ -155,7 +175,7 @@ if not st.session_state.user_registered:
     if st.button("Continue →"):
         if not email or not phone:
             st.warning("Please fill in both fields.")
-        elif is_existing_user(email):
+        elif not is_tester(email) and is_existing_user(email):
             st.error("This email has already created a story. Each email gets one storybook during beta.")
         else:
             save_user(email, phone)
