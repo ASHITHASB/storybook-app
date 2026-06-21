@@ -186,33 +186,23 @@ def generate_story(name, age, gender, theme, family, animals, places, event):
         personalization.append(f"The story revolves around: {event}")
     personalization_text = "\n".join(personalization) if personalization else "No extra personalization."
 
-    prompt = f"""
-Write a warm, age-appropriate children's storybook with exactly 8 pages.
-
-Main character: {character_desc}
-
-Theme: {theme}
-
-{personalization_text}
-
-Format each page EXACTLY like this (no deviations):
+    prompt = f"""Write a warm children's storybook. Output exactly 8 pages using this format with no extra text, no bold, no markdown:
 
 Page 1
-Text: [2-3 sentences of story text, simple and engaging for a {age}-year-old]
-Scene: [vivid visual description of this page's illustration, 1 sentence, no character names]
+Text: [2-3 simple sentences for a {age}-year-old]
+Scene: [one sentence visual description of the illustration]
 
 Page 2
 Text: ...
 Scene: ...
 
-...continue through Page 8.
+(repeat through Page 8)
 
-Rules:
-- Keep the same character appearance throughout
-- Each page text should be simple, warm, and age-appropriate
-- Scene descriptions should be visually rich for illustration
-- End with a positive, uplifting conclusion
-"""
+Character: {character_desc}
+Theme: {theme}
+{personalization_text}
+
+Important: Use plain text only. Do not use asterisks, bold, or markdown. Every page must have both Text: and Scene: on their own lines."""
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
@@ -225,19 +215,43 @@ Rules:
 # ==============================
 
 def parse_story(story_text):
-    """Robust regex-based parser for the Page N / Text: / Scene: format."""
-    pattern = re.compile(
-        r"Page\s+\d+\s*\n+Text:\s*(.*?)\s*\nScene:\s*(.*?)(?=\nPage\s+\d+|\Z)",
-        re.DOTALL | re.IGNORECASE
-    )
-    matches = pattern.findall(story_text)
-    pages = []
-    for text, scene in matches:
-        text = text.strip()
-        scene = scene.strip()
-        if text and scene and len(scene) >= 15:
-            pages.append({"text": text, "scene": scene})
-    return pages
+    """
+    Multi-strategy parser — handles GPT formatting variations:
+    bold headers (**Page 1**), colons (Page 1:), extra blank lines, etc.
+    """
+    # Strip markdown bold/italic so **Page 1** becomes Page 1
+    text = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', story_text)
+
+    strategies = [
+        # Standard: Page N\nText: ...\nScene: ...
+        re.compile(
+            r'Page\s*\d+[:\.]?\s*\n+\s*Text:\s*(.*?)\s*\n+\s*Scene:\s*(.*?)(?=\n+\s*Page\s*\d+|\Z)',
+            re.DOTALL | re.IGNORECASE
+        ),
+        # No page header: just Text: ... Scene: ... blocks
+        re.compile(
+            r'Text:\s*(.*?)\s*\nScene:\s*(.*?)(?=\nText:|\Z)',
+            re.DOTALL | re.IGNORECASE
+        ),
+        # Page header on same line as content: "Page 1: Once upon..."
+        re.compile(
+            r'Page\s*\d+[:\.]?\s+(.*?)\s*\nScene:\s*(.*?)(?=\nPage\s*\d+|\Z)',
+            re.DOTALL | re.IGNORECASE
+        ),
+    ]
+
+    for pattern in strategies:
+        matches = pattern.findall(text)
+        pages = []
+        for text_content, scene in matches:
+            text_content = text_content.strip()
+            scene = scene.strip()
+            if text_content and scene and len(scene) >= 10:
+                pages.append({"text": text_content, "scene": scene})
+        if len(pages) >= 3:  # need at least 3 pages to be a valid story
+            return pages
+
+    return []
 
 # ==============================
 # IMAGE ENGINE (Pollinations.ai — free)
