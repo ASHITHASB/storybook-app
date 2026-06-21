@@ -16,6 +16,7 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 # ==============================
 # CONFIG
@@ -92,7 +93,7 @@ LANGUAGES = {
 
 @st.cache_resource
 def register_fonts():
-    """Register Noto fonts once at startup."""
+    """Register Noto fonts once at startup, including family mapping."""
     registered = {}
     for lang, cfg in LANGUAGES.items():
         path = cfg["font_path"]
@@ -100,11 +101,15 @@ def register_fonts():
         if path and os.path.exists(path):
             try:
                 pdfmetrics.registerFont(TTFont(name, path))
+                # Must register family so ReportLab can resolve bold/italic lookups
+                registerFontFamily(name, normal=name, bold=name, italic=name, boldItalic=name)
                 registered[lang] = name
             except Exception:
                 registered[lang] = "Helvetica"
         else:
-            registered[lang] = "Helvetica" if not path else name
+            # Font file not found — fall back to Helvetica (PDF won't render script correctly
+            # but won't crash; web display is still fine)
+            registered[lang] = "Helvetica"
     return registered
 
 font_registry = register_fonts()
