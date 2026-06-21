@@ -291,12 +291,19 @@ Rules:
 - The ending should leave the child feeling warm, capable, and loved
 - Plain text only. No markdown formatting whatsoever."""
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.85,
-    )
-    return response.choices[0].message.content
+    for model in ["gpt-4o", "gpt-4o-mini"]:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.85,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
+                continue  # try next model
+            raise  # re-raise any other error
+    raise RuntimeError("No available OpenAI model. Check your API key permissions.")
 
 # ==============================
 # PARSE STORY
