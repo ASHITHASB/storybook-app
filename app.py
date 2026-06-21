@@ -1,16 +1,17 @@
 import streamlit as st
 import os
-import csv
+import re
 import requests
 import urllib.parse
 from datetime import datetime
 
 from openai import OpenAI
+from supabase import create_client, Client
 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.pagesizes import A5
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.units import inch
 
 # ==============================
@@ -19,513 +20,387 @@ from reportlab.lib.units import inch
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-st.set_page_config(page_title="Magical Storybook", layout="wide")
+supabase: Client = create_client(
+    st.secrets["SUPABASE_URL"],
+    st.secrets["SUPABASE_KEY"]
+)
 
-st.title("✨ Magical Storybook")
+st.set_page_config(page_title="Magical Storybook", page_icon="✨", layout="wide")
+
+st.markdown("""
+<style>
+.block-container {
+    max-width: 860px !important;
+    padding-left: 5%;
+    padding-right: 5%;
+}
+.story-card {
+    background: linear-gradient(135deg, #fff1ff, #e6f7ff);
+    padding: 24px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.1rem;
+    line-height: 1.7;
+}
+.stButton>button {
+    width: 100%;
+    border-radius: 25px;
+    font-size: 1rem;
+    padding: 0.6rem;
+}
+h1 { text-align: center; }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("<h1>✨ My Magical Storybook ✨</h1>", unsafe_allow_html=True)
+
+MAX_ATTEMPTS = 3
 
 # ==============================
 # SESSION STATE
 # ==============================
 
-if "user_registered" not in st.session_state:
-    st.session_state.user_registered = False
-
-if "story_generated" not in st.session_state:
-    st.session_state.story_generated = False
-
-if "attempt_count" not in st.session_state:
-    st.session_state.attempt_count = 0
-
-if "character_memory" not in st.session_state:
-    st.session_state.character_memory = None
-
-MAX_ATTEMPTS = 3
+for key, default in {
+    "user_registered": False,
+    "story_generated": False,
+    "attempt_count": 0,
+    "character_memory": None,
+    "user_email": None,
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # ==============================
-# USER STORAGE
+# USER STORAGE (Supabase)
 # ==============================
 
-def is_existing_user(email):
-    if not os.path.exists("users.csv"):
-        return False
-    with open("users.csv", "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row["email"] == email:
-                return True
-    return False
+def is_existing_user(email: str) -> bool:
+    result = supabase.table("users").select("email").eq("email", email).execute()
+    return len(result.data) > 0
 
 
-def save_user(email, phone):
-    file_exists = os.path.isfile("users.csv")
-    with open("users.csv", "a", newline="") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["email", "phone", "timestamp"])
-        writer.writerow([email, phone, datetime.now()])
+def save_user(email: str, phone: str):
+    supabase.table("users").insert({
+        "email": email,
+        "phone": phone,
+        "created_at": datetime.utcnow().isoformat(),
+    }).execute()
 
 # ==============================
 # SIGNUP
 # ==============================
 
 if not st.session_state.user_registered:
+    st.markdown("## 🔐 Sign up to get started")
 
-    st.subheader("🔐 Sign up")
+    col1, col2 = st.columns(2)
+    with col1:
+        email = st.text_input("📧 Email")
+    with col2:
+        phone = st.text_input("📱 Mobile Number")
 
-    email = st.text_input("Email")
-    phone = st.text_input("Phone")
-
-    if st.button("Continue"):
-
+    if st.button("Continue →"):
         if not email or not phone:
-            st.warning("Fill all fields")
-
+            st.warning("Please fill in both fields.")
         elif is_existing_user(email):
-            st.error("You already created a story")
-
+            st.error("This email has already created a story. Each email gets one storybook during beta.")
         else:
             save_user(email, phone)
             st.session_state.user_registered = True
-            st.success("Welcome!")
+            st.session_state.user_email = email
+            st.success("Welcome! Let's create your story ✨")
+            st.rerun()
 
     st.stop()
 
 # ==============================
-# INPUTS
+# STORY INPUTS
 # ==============================
 
+st.markdown("### 👶 Tell us about the child")
+
 col1, col2, col3 = st.columns(3)
-
 with col1:
-    name = st.text_input("Child Name")
-
+    name = st.text_input("Child's Name", placeholder="e.g. Layla")
 with col2:
-    age = st.selectbox("Age", [3,4,5,6,7,8])
-
+    age = st.selectbox("Age", [3, 4, 5, 6, 7, 8])
 with col3:
-    gender = st.selectbox("Gender", ["Boy", "Girl"])
+    gender = st.selectbox("Gender", ["Girl", "Boy"])
 
-theme = st.selectbox("Theme", ["Kindness", "Courage", "Friendship"])
+theme = st.selectbox("Story Theme", [
+    "Kindness 💖",
+    "Courage 🦁",
+    "Friendship 🤝",
+    "Confidence 🌟",
+])
 
-st.subheader("✨ Personalize the story")
+st.markdown("### ✨ Personalize the story")
 
-family = st.multiselect("Family", ["Mother", "Father", "Brother", "Sister"])
-animals = st.multiselect("Animals", ["Dog", "Cat", "Bird"])
-places = st.multiselect("Places", ["Park", "School", "Home"])
-event = st.text_input("Event (optional)")
+col4, col5, col6 = st.columns(3)
+with col4:
+    family = st.multiselect("Family members", ["Mother", "Father", "Brother", "Sister", "Grandma", "Grandpa"])
+with col5:
+    animals = st.multiselect("Favourite animals", ["Dog", "Cat", "Bird", "Rabbit", "Horse"])
+with col6:
+    places = st.multiselect("Favourite places", ["Park", "Beach", "School", "Forest", "Home"])
+
+event = st.text_input("Special event (optional)", placeholder="e.g. first day of school, birthday party")
 
 # ==============================
 # CHARACTER MEMORY
 # ==============================
 
 def generate_character_memory(name, age, gender):
-
     prompt = f"""
-    Create a visual description of a child.
+Describe the appearance of a storybook character in 1 short sentence.
 
-    Name: {name}
-    Age: {age}
-    Gender: {gender}
+Name: {name}, Age: {age}, Gender: {gender}
 
-    Include:
-    face, hair, clothing
-
-    Keep it short.
-
-    Example:
-    round face, curly hair, red shirt, blue shorts
-    """
-
+Include: face shape, hair colour and style, skin tone, outfit colour.
+Keep it under 20 words. No proper nouns. Example:
+round face, curly brown hair, warm skin, yellow dress with white collar
+"""
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}]
     )
-
     return response.choices[0].message.content.strip()
 
 # ==============================
 # STORY ENGINE
 # ==============================
 
-def build_character(name, age, gender):
-
+def generate_story(name, age, gender, theme, family, animals, places, event):
     memory = st.session_state.character_memory
 
-    return f"""
-    {name}, a {age}-year-old {gender.lower()} child.
-
-    Appearance:
-    {memory}
-
-    SAME character across all pages.
-    """
-
-def build_personalization(family, animals, places, event):
-
-    return f"""
-    Family: {", ".join(family) if family else "None"}
-    Animals: {", ".join(animals) if animals else "None"}
-    Places: {", ".join(places) if places else "None"}
-    Event: {event if event else "None"}
-    """
-
-def generate_story(name, age, gender, theme, family, animals, places, event):
-
-    character = build_character(name, age, gender)
-    personalization = build_personalization(family, animals, places, event)
+    character_desc = f"{name}, a {age}-year-old {gender.lower()} child. Appearance: {memory}."
+    personalization = []
+    if family:
+        personalization.append(f"Family members who appear: {', '.join(family)}")
+    if animals:
+        personalization.append(f"Animals in the story: {', '.join(animals)}")
+    if places:
+        personalization.append(f"Places visited: {', '.join(places)}")
+    if event:
+        personalization.append(f"The story revolves around: {event}")
+    personalization_text = "\n".join(personalization) if personalization else "No extra personalization."
 
     prompt = f"""
-    Create a high-quality children's story.
+Write a warm, age-appropriate children's storybook with exactly 8 pages.
 
-    Character:
-    {character}
+Main character: {character_desc}
 
-    Theme:
-    {theme}
+Theme: {theme}
 
-    Personalization:
-    {personalization}
+{personalization_text}
 
-    Requirements:
-    - 8 pages exactly
-    - Each page MUST include:
-        Text:
-        Scene:
-    - Scene must be visually rich
-    - Maintain same character
-    """
+Format each page EXACTLY like this (no deviations):
 
+Page 1
+Text: [2-3 sentences of story text, simple and engaging for a {age}-year-old]
+Scene: [vivid visual description of this page's illustration, 1 sentence, no character names]
+
+Page 2
+Text: ...
+Scene: ...
+
+...continue through Page 8.
+
+Rules:
+- Keep the same character appearance throughout
+- Each page text should be simple, warm, and age-appropriate
+- Scene descriptions should be visually rich for illustration
+- End with a positive, uplifting conclusion
+"""
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.8,
     )
-
     return response.choices[0].message.content
 
 # ==============================
-# PARSE
+# PARSE STORY
 # ==============================
 
 def parse_story(story_text):
-    pages = story_text.split("Page")
-    structured = []
-
-    for p in pages:
-        if "Text:" in p and "Scene:" in p:
-            try:
-                text = p.split("Text:")[1].split("Scene:")[0].strip()
-                scene = p.split("Scene:")[1].strip()
-
-                if len(scene) < 20:
-                    continue
-
-                structured.append({"text": text, "scene": scene})
-
-            except:
-                continue
-
-    return structured
+    """Robust regex-based parser for the Page N / Text: / Scene: format."""
+    pattern = re.compile(
+        r"Page\s+\d+\s*\n+Text:\s*(.*?)\s*\nScene:\s*(.*?)(?=\nPage\s+\d+|\Z)",
+        re.DOTALL | re.IGNORECASE
+    )
+    matches = pattern.findall(story_text)
+    pages = []
+    for text, scene in matches:
+        text = text.strip()
+        scene = scene.strip()
+        if text and scene and len(scene) >= 15:
+            pages.append({"text": text, "scene": scene})
+    return pages
 
 # ==============================
-# IMAGE ENGINE
+# IMAGE ENGINE (Pollinations.ai — free)
 # ==============================
 
-def generate_image(scene, name, age, gender):
+def build_image_url(scene, memory, age, gender):
+    character = f"{age} year old {gender.lower()} child, {memory}, same face and clothes throughout"
+    style = "children's storybook watercolor illustration, soft pastel colours, warm magical lighting, high detail, no text, no watermark"
+    full_prompt = f"{character}, {scene}, {style}"
+    encoded = urllib.parse.quote(full_prompt)
+    # seed based on scene for consistency
+    seed = abs(hash(scene)) % 99999
+    return f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=576&seed={seed}&nologo=true"
 
-    memory = st.session_state.character_memory
 
-    character = f"""
-    {age} year old {gender.lower()} child named {name},
-    {memory},
-    same character, same clothes, same face
-    """
-
-    style = """
-    children's storybook illustration,
-    watercolor, pastel colors,
-    magical lighting, high detail
-    """
-
-    negative = "no text, no watermark, no modern objects"
-
-    prompt = f"{character}, {scene}, {style}, {negative}"
-
-    encoded = urllib.parse.quote(prompt)
-
-    return f"https://image.pollinations.ai/prompt/{encoded}"
+def download_image(url, path):
+    """Download image with timeout and size check."""
+    try:
+        r = requests.get(url, timeout=30)
+        r.raise_for_status()
+        if len(r.content) < 5000:  # suspiciously small = likely error image
+            return False
+        with open(path, "wb") as f:
+            f.write(r.content)
+        return True
+    except Exception:
+        return False
 
 # ==============================
 # PDF
 # ==============================
 
-def create_pdf(pages, name):
-
-    file_path = "storybook.pdf"
-
-    doc = SimpleDocTemplate(file_path, pagesize=A5)
+def create_pdf(pages, name, theme):
+    file_path = "/tmp/storybook.pdf"
+    doc = SimpleDocTemplate(file_path, pagesize=A5,
+                            leftMargin=0.5*inch, rightMargin=0.5*inch,
+                            topMargin=0.5*inch, bottomMargin=0.5*inch)
     styles = getSampleStyleSheet()
 
-    text_style = ParagraphStyle(name='Text', alignment=TA_CENTER)
+    title_style = ParagraphStyle(
+        name="Title", fontSize=20, alignment=TA_CENTER,
+        spaceAfter=6, leading=26, fontName="Helvetica-Bold"
+    )
+    subtitle_style = ParagraphStyle(
+        name="Subtitle", fontSize=12, alignment=TA_CENTER,
+        textColor=(0.4, 0.4, 0.4), fontName="Helvetica"
+    )
+    text_style = ParagraphStyle(
+        name="Body", fontSize=13, alignment=TA_CENTER,
+        leading=20, spaceAfter=6, fontName="Helvetica"
+    )
 
     elements = []
 
-    elements.append(Paragraph(f"{name}'s Story", styles["Title"]))
+    # Cover page
+    elements.append(Spacer(1, 1.5*inch))
+    elements.append(Paragraph(f"{name}'s Magical Story", title_style))
+    elements.append(Spacer(1, 0.3*inch))
+    elements.append(Paragraph(theme, subtitle_style))
     elements.append(PageBreak())
 
-    for page in pages:
-
-        if page.get("image_path"):
-            elements.append(Image(page["image_path"], width=4*inch, height=3*inch))
+    for i, page in enumerate(pages):
+        if page.get("image_path") and os.path.exists(page["image_path"]):
+            elements.append(Image(page["image_path"], width=4.3*inch, height=3.2*inch))
+            elements.append(Spacer(1, 0.15*inch))
 
         elements.append(Paragraph(page["text"], text_style))
         elements.append(PageBreak())
 
     doc.build(elements)
-
     return file_path
 
 # ==============================
-# GENERATE FLOW
+# MAIN GENERATE FLOW
 # ==============================
 
-if st.button("✨ Create Story"):
+if st.session_state.attempt_count >= MAX_ATTEMPTS:
+    st.success("🎉 You've used all your story versions! Your final storybook is ready above.")
+    st.stop()
 
-    if st.session_state.attempt_count >= MAX_ATTEMPTS:
-        st.error("Max attempts reached")
+generate_disabled = not name or not name.strip()
+
+if st.button("✨ Create My Storybook", disabled=generate_disabled):
+
+    if not name.strip():
+        st.warning("Please enter the child's name.")
         st.stop()
 
-    st.session_state.attempt_count += 1
-
+    # Generate character memory once (persists across retries)
     if not st.session_state.character_memory:
-        st.session_state.character_memory = generate_character_memory(name, age, gender)
+        with st.spinner("Creating your character..."):
+            st.session_state.character_memory = generate_character_memory(name, age, gender)
 
-    story = generate_story(name, age, gender, theme, family, animals, places, event)
-    pages = parse_story(story)
+    st.session_state.attempt_count += 1
+    memory = st.session_state.character_memory
+
+    # Generate story
+    progress = st.progress(0, text="Writing the story...")
+    story_text = generate_story(name, age, gender, theme, family, animals, places, event)
+    pages = parse_story(story_text)
+    progress.progress(20, text="Story written! Generating illustrations...")
+
+    if not pages:
+        st.error("Story generation failed — the format was unexpected. Please try again.")
+        st.stop()
 
     structured_pages = []
 
     for i, page in enumerate(pages):
+        pct = 20 + int((i / len(pages)) * 65)
+        progress.progress(pct, text=f"Illustrating page {i+1} of {len(pages)}...")
 
-        st.markdown(f"### Page {i+1}")
+        img_url = build_image_url(page["scene"], memory, age, gender)
+        img_path = f"/tmp/page_{i}.png"
 
-        if i < 5:
-            img_url = generate_image(page["scene"], name, age, gender)
-            st.image(img_url)
-
-            try:
-                img_data = requests.get(img_url).content
-                path = f"temp_{i}.png"
-
-                with open(path, "wb") as f:
-                    f.write(img_data)
-
-                page["image_path"] = path
-            except:
-                page["image_path"] = None
-
-        st.markdown(page["text"])
-
+        success = download_image(img_url, img_path)
+        page["image_path"] = img_path if success else None
         structured_pages.append(page)
 
-    pdf = create_pdf(structured_pages, name)
+    progress.progress(85, text="Building your PDF...")
+    pdf_path = create_pdf(structured_pages, name, theme)
+    progress.progress(100, text="Done!")
+    progress.empty()
 
-    with open(pdf, "rb") as f:
-        st.download_button("📥 Download Storybook", f, "storybook.pdf")
+    # Display story
+    st.markdown(f"## 📖 {name}'s Story")
+    for i, page in enumerate(structured_pages):
+        with st.container():
+            if page.get("image_path") and os.path.exists(page["image_path"]):
+                st.image(page["image_path"], use_container_width=True)
+            st.markdown(f'<div class="story-card">{page["text"]}</div>', unsafe_allow_html=True)
 
-# Retry
-if st.session_state.attempt_count < MAX_ATTEMPTS:
-    if st.button("🔁 Try another version"):
+    # Download
+    st.divider()
+    with open(pdf_path, "rb") as f:
+        st.download_button(
+            "📥 Download Your Storybook (PDF)",
+            f,
+            file_name=f"{name.strip()}_storybook.pdf",
+            mime="application/pdf",
+        )
+
+    # Feedback
+    st.divider()
+    st.markdown("### 💬 How did we do?")
+    feedback = st.text_area("Share your thoughts (optional) — your feedback helps us improve!", height=100)
+    if st.button("Submit Feedback"):
+        if feedback.strip():
+            supabase.table("feedback").insert({
+                "email": st.session_state.user_email,
+                "feedback": feedback.strip(),
+                "created_at": datetime.utcnow().isoformat(),
+            }).execute()
+            st.success("Thank you! Your feedback means a lot 💖")
+
+    st.balloons()
+    st.session_state.story_generated = True
+
+# Retry button
+if 0 < st.session_state.attempt_count < MAX_ATTEMPTS:
+    remaining = MAX_ATTEMPTS - st.session_state.attempt_count
+    st.divider()
+    st.caption(f"Not happy with this version? You have {remaining} more attempt(s).")
+    if st.button("🔁 Try a different version"):
         st.session_state.character_memory = None
         st.rerun()
-else:
-    st.success("Final story locked 🎉")
-import streamlit as st
-import os
-import csv
-import requests
-from datetime import datetime
-
-from openai import OpenAI
-
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
-from reportlab.lib.pagesizes import A5
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.units import inch
-from reportlab.lib import colors
-
-# 🔐 API KEY (Streamlit Cloud)
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-st.set_page_config(page_title="Magical Storybook", page_icon="✨", layout="wide")
-
-# 🌈 UI
-st.markdown("""
-<style>
-.block-container {
-    max-width: 100% !important;
-    padding-left: 5%;
-    padding-right: 5%;
-}
-.story-card {
-    background: linear-gradient(135deg, #fff1ff, #e6f7ff);
-    padding: 20px;
-    border-radius: 20px;
-    margin-bottom: 20px;
-}
-.stButton>button {
-    width: 100%;
-    border-radius: 25px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("<h1 style='text-align:center;'>✨ My Magical Storybook ✨</h1>", unsafe_allow_html=True)
-
-# Session
-if "user_registered" not in st.session_state:
-    st.session_state.user_registered = False
-if "story_generated" not in st.session_state:
-    st.session_state.story_generated = False
-
-# Save user
-def save_user(email, phone):
-    file_exists = os.path.isfile("users.csv")
-    with open("users.csv", "a", newline="") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["email", "phone", "timestamp"])
-        writer.writerow([email, phone, datetime.now()])
-
-# Signup
-if not st.session_state.user_registered:
-    st.markdown("## 🔐 Sign up to continue")
-    email = st.text_input("📧 Email")
-    phone = st.text_input("📱 Mobile Number")
-
-    if st.button("Continue"):
-        if not email or not phone:
-            st.warning("Please fill all fields")
-        else:
-            save_user(email, phone)
-            st.session_state.user_registered = True
-            st.success("Welcome! ✨")
-
-    st.stop()
-
-# Inputs
-col1, col2 = st.columns(2)
-with col1:
-    name = st.text_input("Child's Name")
-with col2:
-    age = st.selectbox("Age", [3,4,5,6,7,8])
-
-theme = st.selectbox(
-    "Theme",
-    ["Kindness 💖", "Courage 🦁", "Friendship 🤝", "Confidence 🌟"]
-)
-
-# Story
-def generate_story(name, age, theme):
-    prompt = f"""
-    Create a magical children's story.
-
-    Child: {name}, Age: {age}, Theme: {theme}
-
-    8-12 pages with Text + Scene.
-    """
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
-
-# Image
-def generate_image(scene, name, age):
-    prompt = f"""
-    Children's storybook illustration of a {age}-year-old child named {name}.
-    Scene: {scene}
-    watercolor, fairy tale style
-    """
-    result = client.images.generate(
-        model="dall-e-3",
-        prompt=prompt,
-        size="1024x1024"
-    )
-    return result.data[0].url
-
-# PDF
-def create_pdf(pages, name, theme):
-    file_path = "storybook.pdf"
-
-    doc = SimpleDocTemplate(file_path, pagesize=A5)
-    styles = getSampleStyleSheet()
-
-    title_style = ParagraphStyle(name='Title', fontSize=22, alignment=TA_CENTER)
-    text_style = ParagraphStyle(name='Text', fontSize=14, alignment=TA_CENTER)
-
-    elements = []
-
-    elements.append(Spacer(1, 2 * inch))
-    elements.append(Paragraph(f"{name}'s Magical Story", title_style))
-    elements.append(PageBreak())
-
-    for page in pages:
-        if page.get("image_path"):
-            elements.append(Image(page["image_path"], width=4.5*inch, height=4*inch))
-            elements.append(Spacer(1, 10))
-
-        elements.append(Paragraph(page["text"], text_style))
-        elements.append(PageBreak())
-
-    doc.build(elements)
-    return file_path
-
-# Generate
-if st.button("✨ Create Story"):
-
-    if st.session_state.story_generated:
-        st.warning("Only one story allowed")
-    else:
-
-        story_text = generate_story(name, age, theme)
-        st.session_state.story_generated = True
-
-        pages = story_text.split("Page")
-        structured_pages = []
-
-        for i, p in enumerate(pages):
-            if "Text:" in p and "Scene:" in p:
-                text = p.split("Text:")[1].split("Scene:")[0].strip()
-                scene = p.split("Scene:")[1].strip()
-
-                page_data = {"text": text, "scene": scene}
-
-                if i < 5:
-                    try:
-                        img_url = generate_image(scene, name, age)
-                        st.image(img_url)
-
-                        img_path = f"temp_{i}.png"
-                        img_data = requests.get(img_url).content
-                        with open(img_path, "wb") as f:
-                            f.write(img_data)
-
-                        page_data["image_path"] = img_path
-                    except:
-                        page_data["image_path"] = None
-
-                structured_pages.append(page_data)
-
-        st.markdown("## 📖 Your Storybook")
-
-        for page in structured_pages:
-            st.markdown(page["text"])
-
-        pdf = create_pdf(structured_pages, name, theme)
-
-        with open(pdf, "rb") as f:
-            st.download_button("📥 Download Storybook", f, "storybook.pdf")
-
-        st.balloons()
