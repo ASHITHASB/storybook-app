@@ -38,125 +38,22 @@ st.set_page_config(page_title="My Magical Storybook", page_icon="📖", layout="
 # STORYBOOK ILLUSTRATED STYLE
 # ==============================
 
-st.markdown("""
+st.html("""
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
-
-/* Page background */
-[data-testid="stAppViewContainer"] {
-    background-color: #faf6ef;
-}
-[data-testid="stHeader"] {
-    background-color: #faf6ef;
-}
-[data-testid="stSidebar"] {
-    background-color: #f3ece0;
-}
-
-/* All text */
-html, body, [class*="css"] {
-    font-family: 'Crimson Text', Georgia, serif;
-    color: #3d2b1f;
-}
-
-/* Main container */
-.block-container {
-    max-width: 820px !important;
-    padding: 2rem 3rem;
-}
-
-/* Title */
-h1 {
-    font-family: 'Playfair Display', Georgia, serif !important;
-    font-size: 2.6rem !important;
-    color: #5c3317 !important;
-    text-align: center;
-    letter-spacing: 1px;
-    margin-bottom: 0.2rem !important;
-}
-
-/* Section headings */
-h2, h3 {
-    font-family: 'Playfair Display', Georgia, serif !important;
-    color: #5c3317 !important;
-}
-
-/* Decorative divider */
-.ornament {
-    text-align: center;
-    color: #c9a96e;
-    font-size: 1.4rem;
-    margin: 0.5rem 0 1.2rem 0;
-    letter-spacing: 8px;
-}
-
-/* Story page card */
-.story-card {
-    background: #fdf8f0;
-    border: 1px solid #d4b896;
-    border-radius: 6px;
-    padding: 28px 36px;
-    margin-bottom: 28px;
-    font-family: 'Crimson Text', Georgia, serif;
-    font-size: 1.25rem;
-    line-height: 2;
-    text-align: center;
-    color: #3d2b1f;
-    box-shadow: 0 2px 12px rgba(139, 90, 43, 0.08);
-}
-
-/* Input labels */
-label {
-    font-family: 'Crimson Text', Georgia, serif !important;
-    font-size: 1rem !important;
-    color: #5c3317 !important;
-    font-weight: 600;
-}
-
-/* Buttons */
-.stButton>button {
-    width: 100%;
-    border-radius: 30px;
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 1.05rem;
-    padding: 0.65rem 1.5rem;
-    background: linear-gradient(135deg, #8b5e3c, #c9883f);
-    color: white !important;
-    border: none;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 8px rgba(139, 90, 43, 0.3);
-    transition: all 0.2s ease;
-}
-.stButton>button:hover {
-    background: linear-gradient(135deg, #7a5234, #b87a38);
-    box-shadow: 0 4px 14px rgba(139, 90, 43, 0.4);
-}
-
-/* Download button — keep it distinct */
-[data-testid="stDownloadButton"] button {
-    background: linear-gradient(135deg, #3d6b4f, #5a9e72) !important;
-}
-
-/* Expander */
-details {
-    background: #fdf8f0;
-    border: 1px solid #d4b896 !important;
-    border-radius: 6px;
-}
-
-/* Success / warning messages */
-[data-testid="stAlert"] {
-    border-radius: 6px;
-    font-family: 'Crimson Text', Georgia, serif;
-}
-
-/* Image rounded corners */
-img {
-    border-radius: 8px;
-}
-
+[data-testid="stAppViewContainer"] { background-color: #faf6ef; }
+[data-testid="stHeader"] { background-color: #faf6ef; }
+.block-container { max-width: 820px !important; padding: 2rem 3rem; }
+h1 { font-family: 'Playfair Display', Georgia, serif !important; font-size: 2.6rem !important; color: #5c3317 !important; text-align: center; letter-spacing: 1px; margin-bottom: 0.2rem !important; }
+h2, h3 { font-family: 'Playfair Display', Georgia, serif !important; color: #5c3317 !important; }
+.ornament { text-align: center; color: #c9a96e; font-size: 1.4rem; margin: 0.5rem 0 1.2rem 0; letter-spacing: 8px; }
+.story-card { background: #fdf8f0; border: 1px solid #d4b896; border-radius: 6px; padding: 28px 36px; margin-bottom: 28px; font-family: 'Crimson Text', Georgia, serif; font-size: 1.25rem; line-height: 2; text-align: center; color: #3d2b1f; box-shadow: 0 2px 12px rgba(139,90,43,0.08); }
+.stButton>button { width: 100%; border-radius: 30px; font-family: 'Playfair Display', Georgia, serif; font-size: 1.05rem; padding: 0.65rem 1.5rem; background: linear-gradient(135deg, #8b5e3c, #c9883f); color: white !important; border: none; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(139,90,43,0.3); }
+.stButton>button:hover { background: linear-gradient(135deg, #7a5234, #b87a38); }
+[data-testid="stDownloadButton"] button { background: linear-gradient(135deg, #3d6b4f, #5a9e72) !important; }
+img { border-radius: 8px; }
 </style>
-""", unsafe_allow_html=True)
+""")
 
 st.markdown("<h1>📖 My Magical Storybook</h1>", unsafe_allow_html=True)
 st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
