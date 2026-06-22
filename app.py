@@ -11,18 +11,24 @@ from supabase import create_client, Client
 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.pagesizes import A5
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
+try:
+    from google import genai as google_genai
+    IMAGEN_AVAILABLE = True
+except ImportError:
+    IMAGEN_AVAILABLE = False
+
 # ==============================
 # CONFIG
 # ==============================
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 supabase: Client = create_client(
     st.secrets["SUPABASE_URL"],
@@ -32,33 +38,101 @@ supabase: Client = create_client(
 HF_TOKEN = st.secrets.get("HF_TOKEN", "")
 HF_API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
 
-st.set_page_config(page_title="My Magical Storybook", page_icon="📖", layout="wide")
-
-# ==============================
-# STORYBOOK ILLUSTRATED STYLE
-# ==============================
-
-st.html("""
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-<style>
-[data-testid="stAppViewContainer"] { background-color: #faf6ef; }
-[data-testid="stHeader"] { background-color: #faf6ef; }
-.block-container { max-width: 820px !important; padding: 2rem 3rem; }
-h1 { font-family: 'Playfair Display', Georgia, serif !important; font-size: 2.6rem !important; color: #5c3317 !important; text-align: center; letter-spacing: 1px; margin-bottom: 0.2rem !important; }
-h2, h3 { font-family: 'Playfair Display', Georgia, serif !important; color: #5c3317 !important; }
-.ornament { text-align: center; color: #c9a96e; font-size: 1.4rem; margin: 0.5rem 0 1.2rem 0; letter-spacing: 8px; }
-.story-card { background: #fdf8f0; border: 1px solid #d4b896; border-radius: 6px; padding: 28px 36px; margin-bottom: 28px; font-family: 'Crimson Text', Georgia, serif; font-size: 1.25rem; line-height: 2; text-align: center; color: #3d2b1f; box-shadow: 0 2px 12px rgba(139,90,43,0.08); }
-.stButton>button { width: 100%; border-radius: 30px; font-family: 'Playfair Display', Georgia, serif; font-size: 1.05rem; padding: 0.65rem 1.5rem; background: linear-gradient(135deg, #8b5e3c, #c9883f); color: white !important; border: none; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(139,90,43,0.3); }
-.stButton>button:hover { background: linear-gradient(135deg, #7a5234, #b87a38); }
-[data-testid="stDownloadButton"] button { background: linear-gradient(135deg, #3d6b4f, #5a9e72) !important; }
-img { border-radius: 8px; }
-</style>
-""")
-
-st.markdown("<h1>📖 My Magical Storybook</h1>", unsafe_allow_html=True)
-st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
+GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", "")
+google_client = google_genai.Client(api_key=GOOGLE_API_KEY) if (IMAGEN_AVAILABLE and GOOGLE_API_KEY) else None
 
 MAX_ATTEMPTS = 3
+
+# ==============================
+# STORY TEMPLATES
+# ==============================
+
+TEMPLATES = {
+    "First Day of School 🏫": {
+        "tagline": "Nervous about something new? You're braver than you think.",
+        "theme": "Courage 🦁",
+        "plot": (
+            "Page 1: The night before school, {name} packs their bag excitedly but feels butterflies in their tummy.\n"
+            "Page 2: Morning arrives — {name} gets dressed in their favourite outfit and eats breakfast.\n"
+            "Page 3: {name} arrives at school and sees many new faces and feels a little overwhelmed.\n"
+            "Page 4: {name} sits alone at their desk, missing home and feeling shy.\n"
+            "Page 5: A kind classmate smiles and shares their crayons — they start drawing together.\n"
+            "Page 6: {name} discovers they love story time and playing at recess.\n"
+            "Page 7: At the end of the day, {name} runs home bursting with things to share.\n"
+            "Page 8: That night, {name} lays out their bag for tomorrow — they can't wait to go back."
+        ),
+    },
+    "Dinosaur Adventure 🦕": {
+        "tagline": "What if dinosaurs were friendly and waiting to be found?",
+        "theme": "Curiosity 🔍",
+        "plot": (
+            "Page 1: {name} discovers a mysterious glowing egg in the garden.\n"
+            "Page 2: The egg hatches into a tiny, friendly dinosaur with big curious eyes.\n"
+            "Page 3: {name} and the dinosaur explore the neighbourhood together, causing little surprises.\n"
+            "Page 4: The dinosaur gets stuck in a tight spot and {name} must be brave and clever.\n"
+            "Page 5: {name} finds a creative way to free the dinosaur — together they cheer.\n"
+            "Page 6: They share a meal and watch the sunset, the best of friends.\n"
+            "Page 7: The dinosaur must return to the forest — they hug goodbye sadly but warmly.\n"
+            "Page 8: {name} finds a tiny dino footprint the next morning — proof the adventure was real."
+        ),
+    },
+    "Backyard Adventures 🐕": {
+        "tagline": "Imagination turns any backyard into a whole world. (Bluey-inspired)",
+        "theme": "Friendship 🤝",
+        "plot": (
+            "Page 1: {name} and their dog are in the backyard on a sunny afternoon with nothing planned.\n"
+            "Page 2: {name} decides the yard is actually a jungle — they are the brave explorer.\n"
+            "Page 3: A challenge appears: a wide 'river' to cross (the garden hose, really).\n"
+            "Page 4: {name} builds a bridge from planks and wobbles across with the dog cheering.\n"
+            "Page 5: They discover a 'treasure' buried in the soil — a shiny stone.\n"
+            "Page 6: Mum or Dad joins the game for the grand finale adventure.\n"
+            "Page 7: The game ends as the sun goes down but the magic of the day stays.\n"
+            "Page 8: {name} falls asleep that night already dreaming of tomorrow's adventure."
+        ),
+    },
+    "Bear & Me 🐻": {
+        "tagline": "Big friends make the world feel smaller. (Masha-inspired)",
+        "theme": "Friendship 🤝",
+        "plot": (
+            "Page 1: {name} lives near a cosy forest and loves to explore after breakfast.\n"
+            "Page 2: Deep in the trees, {name} meets a big, gentle bear with kind eyes.\n"
+            "Page 3: They bake honey cakes together in the bear's kitchen and make a wonderful mess.\n"
+            "Page 4: The bear teaches {name} how to fish in the sparkling stream.\n"
+            "Page 5: {name} tries to help the bear carry something heavy and causes a funny tumble.\n"
+            "Page 6: They laugh together and solve the problem as a team.\n"
+            "Page 7: Bear tucks {name} into a cosy pile of autumn leaves for a nap in the sun.\n"
+            "Page 8: {name} wakes up at home in their own bed, smiling — was it all a dream?"
+        ),
+    },
+    "Mermaid Adventure 🧜": {
+        "tagline": "Dive into an underwater kingdom full of colour and wonder.",
+        "theme": "Curiosity 🔍",
+        "plot": (
+            "Page 1: {name} finds a glowing pink shell on the beach at sunset.\n"
+            "Page 2: Touching the shell, {name} is magically transformed and sinks gently underwater.\n"
+            "Page 3: A friendly mermaid appears and offers to show {name} the ocean kingdom.\n"
+            "Page 4: They swim past coral castles, playful dolphins and fish of every colour.\n"
+            "Page 5: A tiny seahorse is lost and crying — {name} decides to help find its home.\n"
+            "Page 6: {name} follows a trail of glowing bubbles and reunites the seahorse with its family.\n"
+            "Page 7: The ocean throws a sparkling party in {name}'s honour with singing fish.\n"
+            "Page 8: {name} wakes up on the beach at dawn, the glowing shell safe in their hand."
+        ),
+    },
+    "Unicorn Magic 🦄": {
+        "tagline": "Some friendships are truly magical.",
+        "theme": "Kindness 💖",
+        "plot": (
+            "Page 1: {name} makes a wish on the brightest star before bedtime.\n"
+            "Page 2: A soft glow at the window — a unicorn is waiting, mane like moonlight.\n"
+            "Page 3: They fly through a sky full of clouds shaped like elephants and whales.\n"
+            "Page 4: They land in a meadow where flowers glow and butterflies sing tiny songs.\n"
+            "Page 5: A small fairy sits crying — her wings have lost their sparkle.\n"
+            "Page 6: {name} offers a kind word and a gentle hug — the wings flutter and shine again.\n"
+            "Page 7: The unicorn carries {name} home as the sky turns pink with dawn.\n"
+            "Page 8: {name} wakes to find a single glowing flower on the pillow — it was all real."
+        ),
+    },
+}
 
 # ==============================
 # LANGUAGE CONFIG
@@ -67,18 +141,15 @@ MAX_ATTEMPTS = 3
 LANGUAGES = {
     "English": {"prompt_lang": "English", "font_name": "Helvetica", "font_path": None},
     "Hindi (हिंदी)": {
-        "prompt_lang": "Hindi",
-        "font_name": "NotoDevanagari",
+        "prompt_lang": "Hindi", "font_name": "NotoDevanagari",
         "font_path": "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
     },
     "Tamil (தமிழ்)": {
-        "prompt_lang": "Tamil",
-        "font_name": "NotoTamil",
+        "prompt_lang": "Tamil", "font_name": "NotoTamil",
         "font_path": "/usr/share/fonts/truetype/noto/NotoSansTamil-Regular.ttf",
     },
     "Malayalam (മലയാളം)": {
-        "prompt_lang": "Malayalam",
-        "font_name": "NotoMalayalam",
+        "prompt_lang": "Malayalam", "font_name": "NotoMalayalam",
         "font_path": "/usr/share/fonts/truetype/noto/NotoSansMalayalam-Regular.ttf",
     },
 }
@@ -100,6 +171,34 @@ def register_fonts():
     return registered
 
 font_registry = register_fonts()
+
+# ==============================
+# PAGE CONFIG & STYLE
+# ==============================
+
+st.set_page_config(page_title="My Magical Storybook", page_icon="📖", layout="wide")
+
+st.html("""
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+[data-testid="stAppViewContainer"] { background-color: #faf6ef; }
+[data-testid="stHeader"] { background-color: #faf6ef; }
+.block-container { max-width: 860px !important; padding: 2rem 3rem; }
+h1 { font-family: 'Playfair Display', Georgia, serif !important; font-size: 2.6rem !important; color: #5c3317 !important; text-align: center; letter-spacing: 1px; margin-bottom: 0.2rem !important; }
+h2, h3 { font-family: 'Playfair Display', Georgia, serif !important; color: #5c3317 !important; }
+.ornament { text-align: center; color: #c9a96e; font-size: 1.4rem; margin: 0.5rem 0 1.2rem 0; letter-spacing: 8px; }
+.template-card { background: #fdf8f0; border: 1.5px solid #d4b896; border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; cursor: pointer; transition: border-color 0.2s; }
+.template-card:hover { border-color: #8b5e3c; }
+.story-card { background: #fdf8f0; border: 1px solid #d4b896; border-radius: 6px; padding: 28px 36px; margin-bottom: 28px; font-family: 'Crimson Text', Georgia, serif; font-size: 1.25rem; line-height: 2; text-align: center; color: #3d2b1f; box-shadow: 0 2px 12px rgba(139,90,43,0.08); }
+.stButton>button { width: 100%; border-radius: 30px; font-family: 'Playfair Display', Georgia, serif; font-size: 1.05rem; padding: 0.65rem 1.5rem; background: linear-gradient(135deg, #8b5e3c, #c9883f); color: white !important; border: none; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(139,90,43,0.3); }
+.stButton>button:hover { background: linear-gradient(135deg, #7a5234, #b87a38); }
+[data-testid="stDownloadButton"] button { background: linear-gradient(135deg, #3d6b4f, #5a9e72) !important; }
+img { border-radius: 8px; }
+</style>
+""")
+
+st.markdown("<h1>📖 My Magical Storybook</h1>", unsafe_allow_html=True)
+st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
 
 # ==============================
 # SESSION STATE
@@ -124,19 +223,17 @@ TESTER_EMAILS = {
     if e.strip()
 }
 
-def is_tester(email: str) -> bool:
+def is_tester(email):
     return email.strip().lower() in TESTER_EMAILS
 
-def is_existing_user(email: str) -> bool:
-    result = supabase.table("users").select("email").eq("email", email).execute()
-    return len(result.data) > 0
+def is_existing_user(email):
+    return len(supabase.table("users").select("email").eq("email", email).execute().data) > 0
 
-def save_user(email: str, phone: str):
+def save_user(email, phone):
     if is_tester(email):
         return
     supabase.table("users").insert({
-        "email": email,
-        "phone": phone,
+        "email": email, "phone": phone,
         "created_at": datetime.utcnow().isoformat(),
     }).execute()
 
@@ -146,7 +243,6 @@ def save_user(email: str, phone: str):
 
 if not st.session_state.user_registered:
     st.markdown("### 🔐 Sign up to begin")
-
     col1, col2 = st.columns(2)
     with col1:
         email = st.text_input("Email address")
@@ -163,119 +259,225 @@ if not st.session_state.user_registered:
             st.session_state.user_registered = True
             st.session_state.user_email = email
             st.rerun()
-
     st.stop()
 
 # ==============================
-# STORY INPUTS
+# MODE TABS
 # ==============================
 
-st.markdown("### About the child")
+tab_template, tab_custom = st.tabs(["📚 Template Stories", "✍️ Custom Story"])
 
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    name = st.text_input("Child's name", placeholder="e.g. Layla")
-with col2:
-    age = st.selectbox("Age", [3, 4, 5, 6, 7, 8])
-with col3:
-    gender = st.selectbox("Gender", ["Girl", "Boy"])
-with col4:
-    language = st.selectbox("Language", list(LANGUAGES.keys()))
+# ============================================================
+# TAB 1 — TEMPLATE MODE
+# ============================================================
 
-theme = st.selectbox("Story theme", [
-    "Kindness 💖",
-    "Courage 🦁",
-    "Friendship 🤝",
-    "Confidence 🌟",
-    "Curiosity 🔍",
-    "Honesty 🌿",
-])
+with tab_template:
+    st.markdown("### Choose your story")
 
-st.markdown("### Personalise the story")
-
-col5, col6, col7 = st.columns(3)
-with col5:
-    family = st.multiselect("Family members", ["Mother", "Father", "Brother", "Sister", "Grandma", "Grandpa"])
-with col6:
-    animals = st.multiselect("Favourite animals", ["Dog", "Cat", "Bird", "Rabbit", "Horse", "Elephant"])
-with col7:
-    places = st.multiselect("Favourite places", ["Park", "Beach", "School", "Forest", "Home", "Library"])
-
-event = st.text_input("Special event (optional)", placeholder="e.g. first day of school, birthday party")
-
-# Advanced options
-with st.expander("✦ Advanced customisation (optional)"):
-    col8, col9 = st.columns(2)
-    with col8:
-        interests = st.text_input("Child's interests / hobbies", placeholder="e.g. painting, football, dancing")
-        fav_colour = st.text_input("Favourite colour", placeholder="e.g. purple, sunshine yellow")
-    with col9:
-        best_friend = st.text_input("Best friend's name", placeholder="e.g. Mia, Arjun")
-        moral = st.text_input("Specific lesson or moral", placeholder="e.g. it's okay to ask for help")
-
-# ==============================
-# CHARACTER MEMORY
-# ==============================
-
-def generate_character_memory(name, age, gender, fav_colour):
-    colour_hint = f"Their favourite colour is {fav_colour}, reflected in their outfit." if fav_colour else ""
-    prompt = f"""Describe a children's storybook character's appearance in one vivid sentence (under 25 words).
-Name: {name}, Age: {age}, Gender: {gender}. {colour_hint}
-Include: hair style and colour, skin tone, outfit with specific colour. No proper nouns. Be warm and specific.
-Example: long wavy black hair, golden-brown skin, bright purple dress with white stars and little red boots"""
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
+    template_name = st.selectbox(
+        "Story template",
+        list(TEMPLATES.keys()),
+        format_func=lambda x: x,
+        label_visibility="collapsed",
     )
-    return response.choices[0].message.content.strip()
+    t = TEMPLATES[template_name]
+    st.info(f"**{template_name}** — {t['tagline']}")
+
+    st.markdown("### About the child")
+    tc1, tc2, tc3, tc4 = st.columns(4)
+    with tc1:
+        t_name = st.text_input("Child's name", key="t_name", placeholder="e.g. Layla")
+    with tc2:
+        t_age = st.selectbox("Age", [3, 4, 5, 6, 7, 8], key="t_age")
+    with tc3:
+        t_gender = st.selectbox("Gender", ["Girl", "Boy"], key="t_gender")
+    with tc4:
+        t_lang = st.selectbox("Language", list(LANGUAGES.keys()), key="t_lang")
+
+    st.markdown("### Character appearance")
+    ta1, ta2, ta3 = st.columns(3)
+    with ta1:
+        t_hair = st.text_input("Hair", key="t_hair", placeholder="e.g. long curly black hair")
+    with ta2:
+        t_colour = st.text_input("Favourite colour (outfit)", key="t_colour", placeholder="e.g. purple")
+    with ta3:
+        t_skin = st.text_input("Skin tone", key="t_skin", placeholder="e.g. warm golden skin")
+
+    if st.session_state.attempt_count < MAX_ATTEMPTS:
+        if st.button("✦ Create Storybook", key="btn_template", disabled=not t_name.strip()):
+            if not t_name.strip():
+                st.warning("Please enter the child's name.")
+                st.stop()
+
+            # Build character memory from explicit inputs
+            appearance_parts = []
+            if t_hair:
+                appearance_parts.append(t_hair)
+            if t_skin:
+                appearance_parts.append(t_skin)
+            if t_colour:
+                appearance_parts.append(f"{t_colour} outfit")
+            if not appearance_parts:
+                with st.spinner("Bringing your character to life..."):
+                    from openai import OpenAI as _OAI
+                    r = openai_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content":
+                            f"Describe a storybook child in one sentence (under 20 words). "
+                            f"Age: {t_age}, Gender: {t_gender}. Include hair, skin, outfit. No proper nouns."}]
+                    )
+                    st.session_state.character_memory = r.choices[0].message.content.strip()
+            else:
+                st.session_state.character_memory = ", ".join(appearance_parts)
+
+            st.session_state.attempt_count += 1
+            st.session_state["_mode"] = "template"
+            st.session_state["_params"] = {
+                "name": t_name, "age": t_age, "gender": t_gender,
+                "language": t_lang, "template_name": template_name,
+                "fav_colour": t_colour,
+            }
+            st.rerun()
+    else:
+        st.success("🎉 You've used all your story attempts!")
+
+# ============================================================
+# TAB 2 — CUSTOM MODE
+# ============================================================
+
+with tab_custom:
+    st.markdown("### About the child")
+    cc1, cc2, cc3, cc4 = st.columns(4)
+    with cc1:
+        c_name = st.text_input("Child's name", key="c_name", placeholder="e.g. Arjun")
+    with cc2:
+        c_age = st.selectbox("Age", [3, 4, 5, 6, 7, 8], key="c_age")
+    with cc3:
+        c_gender = st.selectbox("Gender", ["Girl", "Boy"], key="c_gender")
+    with cc4:
+        c_lang = st.selectbox("Language", list(LANGUAGES.keys()), key="c_lang")
+
+    c_theme = st.selectbox("Story theme", [
+        "Kindness 💖", "Courage 🦁", "Friendship 🤝",
+        "Confidence 🌟", "Curiosity 🔍", "Honesty 🌿",
+    ], key="c_theme")
+
+    st.markdown("### Personalise")
+    cp1, cp2, cp3 = st.columns(3)
+    with cp1:
+        c_family = st.multiselect("Family members", ["Mother", "Father", "Brother", "Sister", "Grandma", "Grandpa"])
+    with cp2:
+        c_animals = st.multiselect("Animals", ["Dog", "Cat", "Bird", "Rabbit", "Horse", "Elephant"])
+    with cp3:
+        c_places = st.multiselect("Places", ["Park", "Beach", "School", "Forest", "Home", "Library"])
+
+    c_event = st.text_input("Special event (optional)", placeholder="e.g. first day of school", key="c_event")
+
+    with st.expander("✦ Advanced customisation (optional)"):
+        ca1, ca2 = st.columns(2)
+        with ca1:
+            c_interests = st.text_input("Interests / hobbies", placeholder="e.g. painting, football")
+            c_colour = st.text_input("Favourite colour", placeholder="e.g. purple")
+        with ca2:
+            c_friend = st.text_input("Best friend's name", placeholder="e.g. Mia")
+            c_moral = st.text_input("Specific lesson or moral", placeholder="e.g. it's okay to ask for help")
+
+    # Plot customisation
+    st.markdown("### ✍️ Customise the storyline")
+    plot_mode = st.radio(
+        "How would you like to shape the story?",
+        ["🗝️ Guided plot points", "📝 Free-write the plot"],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    if plot_mode == "🗝️ Guided plot points":
+        gp1, gp2 = st.columns(2)
+        with gp1:
+            c_opening = st.text_area("Opening scene", placeholder="Where does the story begin? What is the child doing?", height=90)
+            c_challenge = st.text_area("Problem or challenge", placeholder="What difficulty or adventure does the child face?", height=90)
+        with gp2:
+            c_turning = st.text_area("Turning point", placeholder="How does the child face it? What changes?", height=90)
+            c_resolution = st.text_area("Resolution", placeholder="How does it end? What does the child learn?", height=90)
+        c_freewrite = None
+    else:
+        c_freewrite = st.text_area(
+            "Write your story plot",
+            placeholder="Describe the full story in your own words. The AI will turn it into a beautiful illustrated book.",
+            height=180,
+        )
+        c_opening = c_challenge = c_turning = c_resolution = None
+
+    if st.session_state.attempt_count < MAX_ATTEMPTS:
+        if st.button("✦ Create My Storybook", key="btn_custom", disabled=not c_name.strip()):
+            if not c_name.strip():
+                st.warning("Please enter the child's name.")
+                st.stop()
+
+            with st.spinner("Bringing your character to life..."):
+                colour_hint = f"Favourite colour is {c_colour}, reflected in outfit." if c_colour else ""
+                r = openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content":
+                        f"Describe a storybook child's appearance in one vivid sentence (under 25 words). "
+                        f"Age: {c_age}, Gender: {c_gender}. {colour_hint} "
+                        f"Include hair, skin tone, outfit colour. No proper nouns."}]
+                )
+                st.session_state.character_memory = r.choices[0].message.content.strip()
+
+            st.session_state.attempt_count += 1
+            st.session_state["_mode"] = "custom"
+            st.session_state["_params"] = {
+                "name": c_name, "age": c_age, "gender": c_gender,
+                "language": c_lang, "theme": c_theme,
+                "family": c_family, "animals": c_animals,
+                "places": c_places, "event": c_event,
+                "interests": c_interests, "fav_colour": c_colour,
+                "best_friend": c_friend, "moral": c_moral,
+                "plot_mode": plot_mode,
+                "opening": c_opening, "challenge": c_challenge,
+                "turning": c_turning, "resolution": c_resolution,
+                "freewrite": c_freewrite,
+            }
+            st.rerun()
+    else:
+        st.success("🎉 You've used all your story attempts!")
+
+# ============================================================
+# STORY GENERATION (runs after button press + rerun)
+# ============================================================
+
+if "_mode" not in st.session_state:
+    st.stop()
+
+mode = st.session_state["_mode"]
+p = st.session_state["_params"]
+memory = st.session_state.character_memory
+prompt_lang = LANGUAGES[p["language"]]["prompt_lang"]
 
 # ==============================
-# STORY ENGINE
+# BUILD STORY PROMPT
 # ==============================
 
-def generate_story(name, age, gender, theme, family, animals, places, event,
-                   language, interests, fav_colour, best_friend, moral):
+def build_template_prompt(p, memory):
+    t = TEMPLATES[p["template_name"]]
+    plot_with_name = t["plot"].replace("{name}", p["name"])
+    return f"""You are an award-winning children's picture book author writing in {prompt_lang}.
 
-    memory = st.session_state.character_memory
-    prompt_lang = LANGUAGES[language]["prompt_lang"]
+Write a beautifully crafted, emotionally resonant storybook. Use the plot guide below as the exact page-by-page structure, but write it with vivid, lyrical language perfectly pitched for a {p['age']}-year-old.
 
-    # Build rich personalization block
-    details = []
-    if family:
-        details.append(f"Family members who appear: {', '.join(family)}")
-    if animals:
-        details.append(f"Animals featured: {', '.join(animals)}")
-    if places:
-        details.append(f"Places visited: {', '.join(places)}")
-    if event:
-        details.append(f"Central event: {event}")
-    if interests:
-        details.append(f"Child's passions and hobbies: {interests}")
-    if best_friend:
-        details.append(f"Best friend who appears: {best_friend}")
-    if fav_colour:
-        details.append(f"Favourite colour (woven into scenes): {fav_colour}")
-    if moral:
-        details.append(f"Specific lesson the story teaches: {moral}")
+Main character: {p['name']}, a {p['age']}-year-old {p['gender'].lower()}. Appearance: {memory}.
 
-    personalization = "\n".join(f"- {d}" for d in details) if details else "- Keep it warm and universal"
+Theme: {t['theme']}
 
-    prompt = f"""You are an award-winning children's picture book author writing in {prompt_lang}.
-
-Write a beautifully crafted, emotionally resonant storybook with exactly 8 pages. Each page should feel like a moment from a treasured illustrated book — vivid, lyrical, and perfectly pitched for a {age}-year-old.
-
-Main character: {name}, a {age}-year-old {gender.lower()}. Appearance: {memory}.
-
-Theme: {theme}
-
-Story details:
-{personalization}
+Plot guide (follow this structure exactly):
+{plot_with_name}
 
 Output each page in EXACTLY this format (plain text only — no bold, no asterisks, no markdown):
 
 Page 1
-Text: [2–3 warm, simple sentences in {prompt_lang}. Rich in imagery. Age-appropriate for {age}.]
-Scene: [One sentence describing this page's illustration in English. Be specific: setting, mood, colours, what character is doing. This is used for image generation.]
+Text: [2–3 warm, lyrical sentences in {prompt_lang}]
+Scene: [one sentence describing the illustration in English — specific setting, mood, colours, action]
 
 Page 2
 Text: ...
@@ -286,82 +488,164 @@ Scene: ...
 Rules:
 - Text must be in {prompt_lang}
 - Scene must always be in English
-- Build emotional arc: wonder → challenge → growth → joyful resolution
-- Use sensory language and gentle humour
-- The ending should leave the child feeling warm, capable, and loved
-- Plain text only. No markdown formatting whatsoever."""
+- Follow the plot guide closely but write with warmth and imagination
+- End with a joyful, uplifting moment
+- Plain text only. No markdown whatsoever."""
 
-    for model in ["gpt-4o", "gpt-4o-mini"]:
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.85,
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
-                continue  # try next model
-            raise  # re-raise any other error
-    raise RuntimeError("No available OpenAI model. Check your API key permissions.")
+
+def build_custom_prompt(p, memory):
+    details = []
+    if p.get("family"):       details.append(f"Family members: {', '.join(p['family'])}")
+    if p.get("animals"):      details.append(f"Animals: {', '.join(p['animals'])}")
+    if p.get("places"):       details.append(f"Places: {', '.join(p['places'])}")
+    if p.get("event"):        details.append(f"Special event: {p['event']}")
+    if p.get("interests"):    details.append(f"Interests: {p['interests']}")
+    if p.get("best_friend"):  details.append(f"Best friend: {p['best_friend']}")
+    if p.get("fav_colour"):   details.append(f"Favourite colour: {p['fav_colour']}")
+    if p.get("moral"):        details.append(f"Lesson to teach: {p['moral']}")
+    personalization = "\n".join(f"- {d}" for d in details) if details else "- Keep it warm and universal"
+
+    if p.get("freewrite"):
+        plot_section = f"Parent's story plot (use this as the basis for the story):\n{p['freewrite']}"
+    else:
+        parts = []
+        if p.get("opening"):    parts.append(f"Opening: {p['opening']}")
+        if p.get("challenge"):  parts.append(f"Challenge: {p['challenge']}")
+        if p.get("turning"):    parts.append(f"Turning point: {p['turning']}")
+        if p.get("resolution"): parts.append(f"Resolution: {p['resolution']}")
+        plot_section = ("Parent's story plot points:\n" + "\n".join(parts)) if parts else ""
+
+    return f"""You are an award-winning children's picture book author writing in {prompt_lang}.
+
+Write a beautifully crafted, emotionally resonant storybook with exactly 8 pages. Each page should feel like a moment from a treasured illustrated book — vivid, lyrical, and perfectly pitched for a {p['age']}-year-old.
+
+Main character: {p['name']}, a {p['age']}-year-old {p['gender'].lower()}. Appearance: {memory}.
+
+Theme: {p['theme']}
+
+{plot_section}
+
+Story details:
+{personalization}
+
+Output each page in EXACTLY this format (plain text only — no bold, no asterisks, no markdown):
+
+Page 1
+Text: [2–3 warm, lyrical sentences in {prompt_lang}]
+Scene: [one sentence describing the illustration in English — specific setting, mood, colours, action]
+
+Page 2
+Text: ...
+Scene: ...
+
+(continue through Page 8)
+
+Rules:
+- Text must be in {prompt_lang}. Scene must always be in English.
+- Build emotional arc: wonder → challenge → growth → joyful resolution
+- Use sensory language, warmth and gentle humour
+- Plain text only. No markdown whatsoever."""
+
 
 # ==============================
-# PARSE STORY
+# GENERATE STORY
+# ==============================
+
+prompt = build_template_prompt(p, memory) if mode == "template" else build_custom_prompt(p, memory)
+
+progress = st.progress(0, text="Weaving the story...")
+
+story_text = None
+for model in ["gpt-4o", "gpt-4o-mini"]:
+    try:
+        resp = openai_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.85,
+        )
+        story_text = resp.choices[0].message.content
+        break
+    except Exception as e:
+        if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
+            continue
+        raise
+
+if not story_text:
+    st.error("Could not generate story. Check your OpenAI API key.")
+    st.stop()
+
+# ==============================
+# PARSE
 # ==============================
 
 def parse_story(story_text):
     text = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', story_text)
-    strategies = [
-        re.compile(
-            r'Page\s*\d+[:\.]?\s*\n+\s*Text:\s*(.*?)\s*\n+\s*Scene:\s*(.*?)(?=\n+\s*Page\s*\d+|\Z)',
-            re.DOTALL | re.IGNORECASE
-        ),
-        re.compile(
-            r'Text:\s*(.*?)\s*\nScene:\s*(.*?)(?=\nText:|\Z)',
-            re.DOTALL | re.IGNORECASE
-        ),
-    ]
-    for pattern in strategies:
+    for pattern in [
+        re.compile(r'Page\s*\d+[:\.]?\s*\n+\s*Text:\s*(.*?)\s*\n+\s*Scene:\s*(.*?)(?=\n+\s*Page\s*\d+|\Z)', re.DOTALL | re.IGNORECASE),
+        re.compile(r'Text:\s*(.*?)\s*\nScene:\s*(.*?)(?=\nText:|\Z)', re.DOTALL | re.IGNORECASE),
+    ]:
         matches = pattern.findall(text)
-        pages = [
-            {"text": t.strip(), "scene": s.strip()}
-            for t, s in matches
-            if t.strip() and s.strip() and len(s.strip()) >= 10
-        ]
+        pages = [{"text": t.strip(), "scene": s.strip()} for t, s in matches if t.strip() and s.strip() and len(s.strip()) >= 10]
         if len(pages) >= 3:
             return pages
     return []
 
+pages = parse_story(story_text)
+progress.progress(20, text="Story written! Generating illustrations...")
+
+if not pages:
+    st.error("Story format was unexpected. Please try again.")
+    del st.session_state["_mode"]
+    st.stop()
+
 # ==============================
-# IMAGE ENGINE
+# IMAGE GENERATION
 # ==============================
+
+fav_colour = p.get("fav_colour", "")
 
 def build_image_prompt(scene, memory, age, gender, fav_colour):
     colour_note = f"wearing {fav_colour} coloured clothes," if fav_colour else ""
-    character = f"a {age} year old {gender.lower()} child, {memory}, {colour_note} same consistent appearance"
+    character = f"a {age} year old {gender.lower()} child, {memory}, {colour_note} consistent appearance throughout"
     style = (
         "children's picture book illustration, detailed watercolor and ink, "
-        "warm golden lighting, rich background detail, storybook art, "
-        "reminiscent of classic illustrated children's books, "
-        "soft pastel palette, expressive and charming"
+        "warm golden lighting, rich background detail, classic storybook art, "
+        "soft pastel palette, expressive, charming, beautiful"
     )
-    negative = "photorealistic, 3D render, CGI, dark, scary, text, watermark, blurry, ugly, deformed"
+    negative = "photorealistic, 3D, CGI, dark, scary, text, watermark, blurry, deformed, ugly"
     return f"{character}, {scene}, {style}", negative
 
 
-def generate_image_hf(prompt, negative):
+def generate_image_imagen3(prompt_text):
+    if not google_client:
+        return None
+    try:
+        from google.genai import types as gtypes
+        response = google_client.models.generate_images(
+            model="imagen-3.0-generate-001",
+            prompt=prompt_text,
+            config=gtypes.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio="3:2",
+                safety_filter_level="block_some",
+                person_generation="allow_all",
+            ),
+        )
+        if response.generated_images:
+            return response.generated_images[0].image.image_bytes
+    except Exception:
+        pass
+    return None
+
+
+def generate_image_hf(prompt_text, negative):
     if not HF_TOKEN:
         return None
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
     payload = {
-        "inputs": prompt,
-        "parameters": {
-            "negative_prompt": negative,
-            "width": 768,
-            "height": 512,
-            "num_inference_steps": 30,
-            "guidance_scale": 7.5,
-        },
+        "inputs": prompt_text,
+        "parameters": {"negative_prompt": negative, "width": 768, "height": 512,
+                       "num_inference_steps": 30, "guidance_scale": 7.5},
     }
     for attempt in range(3):
         try:
@@ -376,8 +660,8 @@ def generate_image_hf(prompt, negative):
 
 
 def generate_image_pollinations(scene, memory, age, gender, fav_colour):
-    prompt, _ = build_image_prompt(scene, memory, age, gender, fav_colour)
-    encoded = urllib.parse.quote(prompt)
+    prompt_text, _ = build_image_prompt(scene, memory, age, gender, fav_colour)
+    encoded = urllib.parse.quote(prompt_text)
     seed = abs(hash(scene)) % 99999
     url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=512&seed={seed}&nologo=true"
     try:
@@ -390,11 +674,32 @@ def generate_image_pollinations(scene, memory, age, gender, fav_colour):
 
 
 def get_image(scene, memory, age, gender, fav_colour):
-    prompt, negative = build_image_prompt(scene, memory, age, gender, fav_colour)
-    img = generate_image_hf(prompt, negative)
-    if not img:
-        img = generate_image_pollinations(scene, memory, age, gender, fav_colour)
-    return img
+    prompt_text, negative = build_image_prompt(scene, memory, age, gender, fav_colour)
+    return (
+        generate_image_imagen3(prompt_text)
+        or generate_image_hf(prompt_text, negative)
+        or generate_image_pollinations(scene, memory, age, gender, fav_colour)
+    )
+
+
+structured_pages = []
+name = p["name"]
+age = p["age"]
+gender = p["gender"]
+language = p["language"]
+
+for i, page in enumerate(pages):
+    pct = 20 + int((i / len(pages)) * 65)
+    progress.progress(pct, text=f"Illustrating page {i+1} of {len(pages)}...")
+    img_bytes = get_image(page["scene"], memory, age, gender, fav_colour)
+    img_path = f"/tmp/page_{i}.png"
+    if img_bytes:
+        with open(img_path, "wb") as f:
+            f.write(img_bytes)
+        page["image_path"] = img_path
+    else:
+        page["image_path"] = None
+    structured_pages.append(page)
 
 # ==============================
 # PDF
@@ -402,25 +707,13 @@ def get_image(scene, memory, age, gender, fav_colour):
 
 def create_pdf(pages, name, theme, language):
     file_path = "/tmp/storybook.pdf"
-    doc = SimpleDocTemplate(
-        file_path, pagesize=A5,
-        leftMargin=0.55*inch, rightMargin=0.55*inch,
-        topMargin=0.55*inch, bottomMargin=0.55*inch
-    )
+    doc = SimpleDocTemplate(file_path, pagesize=A5,
+                            leftMargin=0.55*inch, rightMargin=0.55*inch,
+                            topMargin=0.55*inch, bottomMargin=0.55*inch)
     font_name = font_registry.get(language, "Helvetica")
-
-    title_style = ParagraphStyle(
-        "Title", fontName=font_name, fontSize=22,
-        alignment=TA_CENTER, spaceAfter=8, leading=30,
-    )
-    subtitle_style = ParagraphStyle(
-        "Subtitle", fontName=font_name, fontSize=12,
-        alignment=TA_CENTER, textColor=(0.55, 0.35, 0.15), leading=18,
-    )
-    body_style = ParagraphStyle(
-        "Body", fontName=font_name, fontSize=13,
-        alignment=TA_CENTER, leading=22, spaceAfter=6,
-    )
+    title_style = ParagraphStyle("Title", fontName=font_name, fontSize=22, alignment=TA_CENTER, spaceAfter=8, leading=30)
+    subtitle_style = ParagraphStyle("Subtitle", fontName=font_name, fontSize=12, alignment=TA_CENTER, textColor=(0.55, 0.35, 0.15), leading=18)
+    body_style = ParagraphStyle("Body", fontName=font_name, fontSize=13, alignment=TA_CENTER, leading=22, spaceAfter=6)
 
     elements = [
         Spacer(1, 1.4*inch),
@@ -429,7 +722,6 @@ def create_pdf(pages, name, theme, language):
         Paragraph(theme, subtitle_style),
         PageBreak(),
     ]
-
     for page in pages:
         if page.get("image_path") and os.path.exists(page["image_path"]):
             elements.append(Image(page["image_path"], width=4.3*inch, height=3.2*inch))
@@ -440,98 +732,53 @@ def create_pdf(pages, name, theme, language):
     doc.build(elements)
     return file_path
 
+progress.progress(88, text="Binding your storybook...")
+theme_display = TEMPLATES[p["template_name"]]["theme"] if mode == "template" else p.get("theme", "")
+pdf_path = create_pdf(structured_pages, name, theme_display, language)
+progress.progress(100, text="Your storybook is ready!")
+progress.empty()
+
 # ==============================
-# MAIN FLOW
+# DISPLAY
 # ==============================
 
-if st.session_state.attempt_count >= MAX_ATTEMPTS:
-    st.success("🎉 You've used all your story versions! Your final storybook is ready above.")
-    st.stop()
+st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
+st.markdown(f"## {name}'s Story")
 
-if st.button("✦ Create My Storybook", disabled=not name.strip()):
+for page in structured_pages:
+    if page.get("image_path") and os.path.exists(page["image_path"]):
+        st.image(page["image_path"], use_container_width=True)
+    st.markdown(f'<div class="story-card">{page["text"]}</div>', unsafe_allow_html=True)
 
-    if not name.strip():
-        st.warning("Please enter the child's name.")
-        st.stop()
+st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
 
-    if not st.session_state.character_memory:
-        with st.spinner("Bringing your character to life..."):
-            st.session_state.character_memory = generate_character_memory(name, age, gender, fav_colour)
-
-    st.session_state.attempt_count += 1
-    memory = st.session_state.character_memory
-
-    progress = st.progress(0, text="Weaving the story...")
-    story_text = generate_story(
-        name, age, gender, theme, family, animals, places, event,
-        language, interests, fav_colour, best_friend, moral
+with open(pdf_path, "rb") as f:
+    st.download_button(
+        "📥 Download Your Storybook (PDF)", f,
+        file_name=f"{name.strip()}_storybook.pdf", mime="application/pdf",
     )
-    pages = parse_story(story_text)
-    progress.progress(20, text="Story written! Creating illustrations...")
 
-    if not pages:
-        st.error("Story generation returned an unexpected format. Please try again.")
-        st.stop()
+# Feedback
+st.divider()
+st.markdown("### 💬 How did we do?")
+feedback = st.text_area("Your thoughts help us improve the experience for every child:", height=100)
+if st.button("Send Feedback"):
+    if feedback.strip():
+        supabase.table("feedback").insert({
+            "email": st.session_state.user_email,
+            "feedback": feedback.strip(),
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
+        st.success("Thank you so much! 💖")
 
-    structured_pages = []
-    for i, page in enumerate(pages):
-        pct = 20 + int((i / len(pages)) * 65)
-        progress.progress(pct, text=f"Illustrating page {i+1} of {len(pages)}...")
-
-        img_bytes = get_image(page["scene"], memory, age, gender, fav_colour)
-        img_path = f"/tmp/page_{i}.png"
-        if img_bytes:
-            with open(img_path, "wb") as f:
-                f.write(img_bytes)
-            page["image_path"] = img_path
-        else:
-            page["image_path"] = None
-        structured_pages.append(page)
-
-    progress.progress(88, text="Binding your storybook...")
-    pdf_path = create_pdf(structured_pages, name, theme, language)
-    progress.progress(100, text="Your storybook is ready!")
-    progress.empty()
-
-    # Display
-    st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
-    st.markdown(f"## {name}'s Story")
-
-    for page in structured_pages:
-        if page.get("image_path") and os.path.exists(page["image_path"]):
-            st.image(page["image_path"], use_container_width=True)
-        st.markdown(f'<div class="story-card">{page["text"]}</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
-
-    with open(pdf_path, "rb") as f:
-        st.download_button(
-            "📥 Download Your Storybook (PDF)",
-            f,
-            file_name=f"{name.strip()}_storybook.pdf",
-            mime="application/pdf",
-        )
-
-    # Feedback
-    st.divider()
-    st.markdown("### 💬 How did we do?")
-    feedback = st.text_area("Your thoughts help us improve the experience for every child:", height=100)
-    if st.button("Send Feedback"):
-        if feedback.strip():
-            supabase.table("feedback").insert({
-                "email": st.session_state.user_email,
-                "feedback": feedback.strip(),
-                "created_at": datetime.utcnow().isoformat(),
-            }).execute()
-            st.success("Thank you so much! 💖")
-
-    st.balloons()
+st.balloons()
 
 # Retry
-if 0 < st.session_state.attempt_count < MAX_ATTEMPTS:
+if st.session_state.attempt_count < MAX_ATTEMPTS:
     remaining = MAX_ATTEMPTS - st.session_state.attempt_count
     st.divider()
     st.caption(f"Not quite right? You have {remaining} more attempt(s) to regenerate.")
     if st.button("🔁 Try a different version"):
         st.session_state.character_memory = None
+        del st.session_state["_mode"]
         st.rerun()
