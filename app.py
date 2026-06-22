@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import re
 import time
+import base64
 import requests
 import urllib.parse
 from datetime import datetime
@@ -173,6 +174,39 @@ def register_fonts():
 font_registry = register_fonts()
 
 # ==============================
+# PHOTO → APPEARANCE EXTRACTION
+# ==============================
+
+def extract_appearance_from_photo(photo_bytes: bytes, age: int, gender: str) -> str:
+    """Use GPT-4o vision to extract the child's appearance from a photo."""
+    b64 = base64.b64encode(photo_bytes).decode()
+    # Detect image type from magic bytes
+    mime = "image/jpeg"
+    if photo_bytes[:4] == b'\x89PNG':
+        mime = "image/png"
+    elif photo_bytes[:4] == b'RIFF':
+        mime = "image/webp"
+
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+                {"type": "text", "text": (
+                    f"This is a photo of a {age}-year-old {gender.lower()} child. "
+                    "Describe their appearance for a children's storybook illustrator in ONE sentence under 25 words. "
+                    "Include: hair colour and style, skin tone, eye colour if visible, and outfit colour. "
+                    "Be warm and specific. No names. "
+                    "Example: long curly black hair, warm golden-brown skin, bright brown eyes, red t-shirt with denim shorts"
+                )},
+            ],
+        }],
+        max_tokens=80,
+    )
+    return response.choices[0].message.content.strip()
+
+# ==============================
 # PAGE CONFIG & STYLE
 # ==============================
 
@@ -294,14 +328,23 @@ with tab_template:
     with tc4:
         t_lang = st.selectbox("Language", list(LANGUAGES.keys()), key="t_lang")
 
-    st.markdown("### Character appearance")
-    ta1, ta2, ta3 = st.columns(3)
-    with ta1:
-        t_hair = st.text_input("Hair", key="t_hair", placeholder="e.g. long curly black hair")
-    with ta2:
+    st.markdown("### Child's appearance")
+    t_photo = st.file_uploader(
+        "📷 Upload a photo of your child (optional — we'll match the character to them)",
+        type=["jpg", "jpeg", "png", "webp"], key="t_photo",
+    )
+    if not t_photo:
+        ta1, ta2, ta3 = st.columns(3)
+        with ta1:
+            t_hair = st.text_input("Hair", key="t_hair", placeholder="e.g. long curly black hair")
+        with ta2:
+            t_colour = st.text_input("Favourite colour (outfit)", key="t_colour", placeholder="e.g. purple")
+        with ta3:
+            t_skin = st.text_input("Skin tone", key="t_skin", placeholder="e.g. warm golden skin")
+    else:
+        t_hair = t_skin = ""
         t_colour = st.text_input("Favourite colour (outfit)", key="t_colour", placeholder="e.g. purple")
-    with ta3:
-        t_skin = st.text_input("Skin tone", key="t_skin", placeholder="e.g. warm golden skin")
+        st.caption("✅ Photo uploaded — we'll extract the appearance automatically.")
 
     if st.session_state.attempt_count < MAX_ATTEMPTS:
         if st.button("✦ Create Storybook", key="btn_template", disabled=not t_name.strip()):
@@ -309,26 +352,23 @@ with tab_template:
                 st.warning("Please enter the child's name.")
                 st.stop()
 
-            # Build character memory from explicit inputs
-            appearance_parts = []
-            if t_hair:
-                appearance_parts.append(t_hair)
-            if t_skin:
-                appearance_parts.append(t_skin)
-            if t_colour:
-                appearance_parts.append(f"{t_colour} outfit")
-            if not appearance_parts:
-                with st.spinner("Bringing your character to life..."):
-                    from openai import OpenAI as _OAI
-                    r = openai_client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "user", "content":
-                            f"Describe a storybook child in one sentence (under 20 words). "
-                            f"Age: {t_age}, Gender: {t_gender}. Include hair, skin, outfit. No proper nouns."}]
+            with st.spinner("Bringing your character to life..."):
+                if t_photo:
+                    st.session_state.character_memory = extract_appearance_from_photo(
+                        t_photo.read(), t_age, t_gender
                     )
-                    st.session_state.character_memory = r.choices[0].message.content.strip()
-            else:
-                st.session_state.character_memory = ", ".join(appearance_parts)
+                else:
+                    parts = [p for p in [t_hair, t_skin, f"{t_colour} outfit" if t_colour else ""] if p]
+                    if parts:
+                        st.session_state.character_memory = ", ".join(parts)
+                    else:
+                        r = openai_client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[{"role": "user", "content":
+                                f"Describe a storybook child in one sentence (under 20 words). "
+                                f"Age: {t_age}, Gender: {t_gender}. Include hair, skin, outfit. No proper nouns."}]
+                        )
+                        st.session_state.character_memory = r.choices[0].message.content.strip()
 
             st.session_state.attempt_count += 1
             st.session_state["_mode"] = "template"
@@ -373,11 +413,19 @@ with tab_custom:
 
     c_event = st.text_input("Special event (optional)", placeholder="e.g. first day of school", key="c_event")
 
+    st.markdown("### Child's appearance")
+    c_photo = st.file_uploader(
+        "📷 Upload a photo of your child (optional — we'll match the character to them)",
+        type=["jpg", "jpeg", "png", "webp"], key="c_photo",
+    )
+    if c_photo:
+        st.caption("✅ Photo uploaded — we'll extract the appearance automatically.")
+
     with st.expander("✦ Advanced customisation (optional)"):
         ca1, ca2 = st.columns(2)
         with ca1:
             c_interests = st.text_input("Interests / hobbies", placeholder="e.g. painting, football")
-            c_colour = st.text_input("Favourite colour", placeholder="e.g. purple")
+            c_colour = st.text_input("Favourite colour (outfit)", placeholder="e.g. purple")
         with ca2:
             c_friend = st.text_input("Best friend's name", placeholder="e.g. Mia")
             c_moral = st.text_input("Specific lesson or moral", placeholder="e.g. it's okay to ask for help")
@@ -415,15 +463,20 @@ with tab_custom:
                 st.stop()
 
             with st.spinner("Bringing your character to life..."):
-                colour_hint = f"Favourite colour is {c_colour}, reflected in outfit." if c_colour else ""
-                r = openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content":
-                        f"Describe a storybook child's appearance in one vivid sentence (under 25 words). "
-                        f"Age: {c_age}, Gender: {c_gender}. {colour_hint} "
-                        f"Include hair, skin tone, outfit colour. No proper nouns."}]
-                )
-                st.session_state.character_memory = r.choices[0].message.content.strip()
+                if c_photo:
+                    st.session_state.character_memory = extract_appearance_from_photo(
+                        c_photo.read(), c_age, c_gender
+                    )
+                else:
+                    colour_hint = f"Favourite colour is {c_colour}, reflected in outfit." if c_colour else ""
+                    r = openai_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content":
+                            f"Describe a storybook child's appearance in one vivid sentence (under 25 words). "
+                            f"Age: {c_age}, Gender: {c_gender}. {colour_hint} "
+                            f"Include hair, skin tone, outfit colour. No proper nouns."}]
+                    )
+                    st.session_state.character_memory = r.choices[0].message.content.strip()
 
             st.session_state.attempt_count += 1
             st.session_state["_mode"] = "custom"
@@ -608,11 +661,13 @@ def build_image_prompt(scene, memory, age, gender, fav_colour):
     colour_note = f"wearing {fav_colour} coloured clothes," if fav_colour else ""
     character = f"a {age} year old {gender.lower()} child, {memory}, {colour_note} consistent appearance throughout"
     style = (
-        "children's picture book illustration, detailed watercolor and ink, "
-        "warm golden lighting, rich background detail, classic storybook art, "
-        "soft pastel palette, expressive, charming, beautiful"
+        "vibrant children's book illustration, 3D cartoon style, "
+        "bright saturated colors, Disney and Pixar inspired art, "
+        "clean professional illustration, expressive cute characters, "
+        "rich detailed colorful background, warm cheerful lighting, "
+        "high quality digital art, playful and charming"
     )
-    negative = "photorealistic, 3D, CGI, dark, scary, text, watermark, blurry, deformed, ugly"
+    negative = "photorealistic, dark, scary, text, watermark, blurry, deformed, ugly, low quality, sketch, grayscale"
     return f"{character}, {scene}, {style}", negative
 
 
