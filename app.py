@@ -187,24 +187,30 @@ def extract_appearance_from_photo(photo_bytes: bytes, age: int, gender: str) -> 
     elif photo_bytes[:4] == b'RIFF':
         mime = "image/webp"
 
-    response = openai_client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
-                {"type": "text", "text": (
-                    f"This is a photo of a {age}-year-old {gender.lower()} child. "
-                    "Describe their appearance for a children's storybook illustrator in ONE sentence under 25 words. "
-                    "Include: hair colour and style, skin tone, eye colour if visible, and outfit colour. "
-                    "Be warm and specific. No names. "
-                    "Example: long curly black hair, warm golden-brown skin, bright brown eyes, red t-shirt with denim shorts"
-                )},
-            ],
-        }],
-        max_tokens=80,
-    )
-    return response.choices[0].message.content.strip()
+    messages = [{
+        "role": "user",
+        "content": [
+            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+            {"type": "text", "text": (
+                f"This is a photo of a {age}-year-old {gender.lower()} child. "
+                "Describe their appearance for a children's storybook illustrator in ONE sentence under 25 words. "
+                "Include: hair colour and style, skin tone, eye colour if visible, and outfit colour. "
+                "Be warm and specific. No names. "
+                "Example: long curly black hair, warm golden-brown skin, bright brown eyes, red t-shirt with denim shorts"
+            )},
+        ],
+    }]
+    for model in ["gpt-4o", "gpt-4o-mini"]:
+        try:
+            response = openai_client.chat.completions.create(
+                model=model, messages=messages, max_tokens=80,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
+                continue
+            raise
+    raise RuntimeError("No available vision model. Check your OpenAI API key permissions.")
 
 # ==============================
 # PAGE CONFIG & STYLE
