@@ -353,7 +353,7 @@ with tab_template:
         st.caption("✅ Photo uploaded — we'll extract the appearance automatically.")
 
     if st.session_state.attempt_count < MAX_ATTEMPTS:
-        if st.button("✦ Create Storybook", key="btn_template", disabled=not t_name.strip()):
+        if st.button("✦ Preview My Story", key="btn_template", disabled=not t_name.strip()):
             if not t_name.strip():
                 st.warning("Please enter the child's name.")
                 st.stop()
@@ -463,7 +463,7 @@ with tab_custom:
         c_opening = c_challenge = c_turning = c_resolution = None
 
     if st.session_state.attempt_count < MAX_ATTEMPTS:
-        if st.button("✦ Create My Storybook", key="btn_custom", disabled=not c_name.strip()):
+        if st.button("✦ Preview My Story", key="btn_custom", disabled=not c_name.strip()):
             if not c_name.strip():
                 st.warning("Please enter the child's name.")
                 st.stop()
@@ -503,14 +503,14 @@ with tab_custom:
         st.success("🎉 You've used all your story attempts!")
 
 # ============================================================
-# STORY GENERATION (runs after button press + rerun)
+# STORY GENERATION — 3-phase: preview → confirm → finalise
 # ============================================================
 
 if "_mode" not in st.session_state:
     st.stop()
 
-mode = st.session_state["_mode"]
-p = st.session_state["_params"]
+mode   = st.session_state["_mode"]
+p      = st.session_state["_params"]
 memory = st.session_state.character_memory
 prompt_lang = LANGUAGES[p["language"]]["prompt_lang"]
 
@@ -607,38 +607,11 @@ Rules:
 
 
 # ==============================
-# GENERATE STORY
+# HELPERS
 # ==============================
 
-prompt = build_template_prompt(p, memory) if mode == "template" else build_custom_prompt(p, memory)
-
-progress = st.progress(0, text="Weaving the story...")
-
-story_text = None
-for model in ["gpt-4o", "gpt-4o-mini"]:
-    try:
-        resp = openai_client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.85,
-        )
-        story_text = resp.choices[0].message.content
-        break
-    except Exception as e:
-        if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
-            continue
-        raise
-
-if not story_text:
-    st.error("Could not generate story. Check your OpenAI API key.")
-    st.stop()
-
-# ==============================
-# PARSE
-# ==============================
-
-def parse_story(story_text):
-    text = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', story_text)
+def parse_story(raw):
+    text = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', raw)
     for pattern in [
         re.compile(r'Page\s*\d+[:\.]?\s*\n+\s*Text:\s*(.*?)\s*\n+\s*Scene:\s*(.*?)(?=\n+\s*Page\s*\d+|\Z)', re.DOTALL | re.IGNORECASE),
         re.compile(r'Text:\s*(.*?)\s*\nScene:\s*(.*?)(?=\nText:|\Z)', re.DOTALL | re.IGNORECASE),
@@ -649,13 +622,28 @@ def parse_story(story_text):
             return pages
     return []
 
-pages = parse_story(story_text)
-progress.progress(20, text="Story written! Generating illustrations...")
 
-if not pages:
-    st.error("Story format was unexpected. Please try again.")
-    del st.session_state["_mode"]
-    st.stop()
+def gen_story_text():
+    prompt = build_template_prompt(p, memory) if mode == "template" else build_custom_prompt(p, memory)
+    for model in ["gpt-4o", "gpt-4o-mini"]:
+        try:
+            resp = openai_client.chat.completions.create(
+                model=model, messages=[{"role": "user", "content": prompt}], temperature=0.85,
+            )
+            return resp.choices[0].message.content
+        except Exception as e:
+            if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
+                continue
+            raise
+    return None
+
+
+def save_image(img_bytes, index):
+    path = f"/tmp/page_{index}.png"
+    with open(path, "wb") as f:
+        f.write(img_bytes)
+    return path
+
 
 # ==============================
 # IMAGE GENERATION
@@ -783,27 +771,16 @@ def get_image(scene, memory, age, gender, fav_colour):
     return None  # should rarely reach here
 
 
-structured_pages = []
-name = p["name"]
-age = p["age"]
-gender = p["gender"]
+name     = p["name"]
+age      = p["age"]
+gender   = p["gender"]
 language = p["language"]
+theme_display = TEMPLATES[p["template_name"]]["theme"] if mode == "template" else p.get("theme", "")
 
-for i, page in enumerate(pages):
-    pct = 20 + int((i / len(pages)) * 65)
-    progress.progress(pct, text=f"Illustrating page {i+1} of {len(pages)}...")
-    img_bytes = get_image(page["scene"], memory, age, gender, fav_colour)
-    img_path = f"/tmp/page_{i}.png"
-    if img_bytes:
-        with open(img_path, "wb") as f:
-            f.write(img_bytes)
-        page["image_path"] = img_path
-    else:
-        page["image_path"] = None
-    structured_pages.append(page)
+PREVIEW_PAGES = 2   # number of pages illustrated in preview
 
 # ==============================
-# PDF
+# PDF BUILDER
 # ==============================
 
 def create_pdf(pages, name, theme, language):
@@ -812,10 +789,9 @@ def create_pdf(pages, name, theme, language):
                             leftMargin=0.55*inch, rightMargin=0.55*inch,
                             topMargin=0.55*inch, bottomMargin=0.55*inch)
     font_name = font_registry.get(language, "Helvetica")
-    title_style = ParagraphStyle("Title", fontName=font_name, fontSize=22, alignment=TA_CENTER, spaceAfter=8, leading=30)
+    title_style    = ParagraphStyle("Title",    fontName=font_name, fontSize=22, alignment=TA_CENTER, spaceAfter=8,  leading=30)
     subtitle_style = ParagraphStyle("Subtitle", fontName=font_name, fontSize=12, alignment=TA_CENTER, textColor=(0.55, 0.35, 0.15), leading=18)
-    body_style = ParagraphStyle("Body", fontName=font_name, fontSize=13, alignment=TA_CENTER, leading=22, spaceAfter=6)
-
+    body_style     = ParagraphStyle("Body",     fontName=font_name, fontSize=13, alignment=TA_CENTER, leading=22,   spaceAfter=6)
     elements = [
         Spacer(1, 1.4*inch),
         Paragraph(f"{name}'s Magical Story", title_style),
@@ -829,24 +805,116 @@ def create_pdf(pages, name, theme, language):
             elements.append(Spacer(1, 0.15*inch))
         elements.append(Paragraph(page["text"], body_style))
         elements.append(PageBreak())
-
     doc.build(elements)
     return file_path
 
-progress.progress(88, text="Binding your storybook...")
-theme_display = TEMPLATES[p["template_name"]]["theme"] if mode == "template" else p.get("theme", "")
-pdf_path = create_pdf(structured_pages, name, theme_display, language)
-progress.progress(100, text="Your storybook is ready!")
-progress.empty()
 
 # ==============================
-# DISPLAY
+# PHASE 1 — GENERATE PREVIEW
+# ==============================
+
+if not st.session_state.get("_preview_done"):
+    prog = st.progress(0, text="Weaving the story...")
+    story_text = gen_story_text()
+    if not story_text:
+        st.error("Could not generate story. Check your OpenAI API key.")
+        st.stop()
+
+    pages = parse_story(story_text)
+    if not pages:
+        st.error("Story format was unexpected. Please try again.")
+        del st.session_state["_mode"]
+        st.stop()
+
+    prog.progress(25, text=f"Story written! Illustrating first {PREVIEW_PAGES} pages for preview...")
+
+    for i in range(min(PREVIEW_PAGES, len(pages))):
+        prog.progress(25 + int((i + 1) / PREVIEW_PAGES * 70), text=f"Illustrating preview page {i+1}...")
+        img = get_image(pages[i]["scene"], memory, age, gender, fav_colour)
+        pages[i]["image_path"] = save_image(img, i) if img else None
+
+    prog.progress(100, text="Preview ready!")
+    prog.empty()
+
+    st.session_state["_preview_done"] = True
+    st.session_state["_preview_pages"] = pages
+    st.rerun()
+
+
+# ==============================
+# PHASE 2 — SHOW PREVIEW + CONFIRM
+# ==============================
+
+if st.session_state.get("_preview_done") and not st.session_state.get("_finalize"):
+    pages = st.session_state["_preview_pages"]
+
+    st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
+    st.markdown(f"## 👀 Preview — {name}'s Story")
+    st.caption("First 2 pages are fully illustrated. Read all 8 pages below to check the story direction.")
+
+    for i, page in enumerate(pages):
+        if i < PREVIEW_PAGES and page.get("image_path") and os.path.exists(page["image_path"]):
+            st.image(page["image_path"], use_container_width=True)
+        elif i >= PREVIEW_PAGES:
+            st.markdown(
+                f'<div style="background:#f3ece0;border:1px dashed #c9a96e;border-radius:6px;'
+                f'padding:10px;text-align:center;color:#a08060;font-style:italic;margin-bottom:6px;">'
+                f'🖼️ Illustration will be generated when you finalise</div>',
+                unsafe_allow_html=True,
+            )
+        st.markdown(f'<div class="story-card">{page["text"]}</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
+    st.markdown("### What would you like to do?")
+
+    btn1, btn2 = st.columns(2)
+    with btn1:
+        if st.button("✦ Looks great! Create Full Storybook"):
+            st.session_state["_finalize"] = True
+            st.rerun()
+    with btn2:
+        remaining = MAX_ATTEMPTS - st.session_state.attempt_count
+        if remaining > 0:
+            if st.button(f"🔁 Try a different version ({remaining} left)"):
+                # Keep _mode and _params, just reset preview so we regenerate
+                del st.session_state["_preview_done"]
+                del st.session_state["_preview_pages"]
+                st.session_state.attempt_count += 1
+                st.rerun()
+        else:
+            st.caption("No more preview attempts — please finalise this version.")
+
+    st.stop()
+
+
+# ==============================
+# PHASE 3 — FINALISE (remaining images + PDF)
+# ==============================
+
+pages = st.session_state["_preview_pages"]
+
+prog = st.progress(0, text="Generating remaining illustrations...")
+remaining_indices = [i for i in range(len(pages)) if i >= PREVIEW_PAGES or not pages[i].get("image_path")]
+
+for step, i in enumerate(remaining_indices):
+    pct = int((step + 1) / max(len(remaining_indices), 1) * 85)
+    prog.progress(pct, text=f"Illustrating page {i+1} of {len(pages)}...")
+    img = get_image(pages[i]["scene"], memory, age, gender, fav_colour)
+    pages[i]["image_path"] = save_image(img, i) if img else None
+
+prog.progress(90, text="Binding your storybook...")
+pdf_path = create_pdf(pages, name, theme_display, language)
+prog.progress(100, text="Your storybook is ready!")
+prog.empty()
+
+# ==============================
+# FINAL DISPLAY
 # ==============================
 
 st.markdown('<div class="ornament">✦ ❧ ✦</div>', unsafe_allow_html=True)
-st.markdown(f"## {name}'s Story")
+st.markdown(f"## 📖 {name}'s Storybook")
 
-for page in structured_pages:
+for page in pages:
     if page.get("image_path") and os.path.exists(page["image_path"]):
         st.image(page["image_path"], use_container_width=True)
     st.markdown(f'<div class="story-card">{page["text"]}</div>', unsafe_allow_html=True)
@@ -873,13 +941,3 @@ if st.button("Send Feedback"):
         st.success("Thank you so much! 💖")
 
 st.balloons()
-
-# Retry
-if st.session_state.attempt_count < MAX_ATTEMPTS:
-    remaining = MAX_ATTEMPTS - st.session_state.attempt_count
-    st.divider()
-    st.caption(f"Not quite right? You have {remaining} more attempt(s) to regenerate.")
-    if st.button("🔁 Try a different version"):
-        st.session_state.character_memory = None
-        del st.session_state["_mode"]
-        st.rerun()
