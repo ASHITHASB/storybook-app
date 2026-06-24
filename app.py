@@ -47,8 +47,8 @@ DASHSCOPE_API_KEY = st.secrets.get("DASHSCOPE_API_KEY", "")
 SARVAM_API_KEY = st.secrets.get("SARVAM_API_KEY", "")
 try:
     from sarvamai import SarvamAI
-    sarvam_client = SarvamAI(api_key=SARVAM_API_KEY) if SARVAM_API_KEY else None
-except ImportError:
+    sarvam_client = SarvamAI(api_subscription_key=SARVAM_API_KEY) if SARVAM_API_KEY else None
+except Exception:
     sarvam_client = None
 
 MAX_ATTEMPTS = 3
