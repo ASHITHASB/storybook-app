@@ -413,6 +413,45 @@ LANGUAGES = {
     },
 }
 
+# ==============================
+# VISUAL STYLES
+# ==============================
+
+VISUAL_STYLES = {
+    "🎨 Illustrated Storybook": {
+        "label": "Illustrated Storybook",
+        "image_style": (
+            "vibrant children's book illustration, 3D cartoon style, "
+            "bright saturated colors, Disney and Pixar inspired art, "
+            "clean professional illustration, expressive cute characters, "
+            "rich detailed colorful background, warm cheerful lighting, "
+            "high quality digital art, playful and charming"
+        ),
+        "ref_style": "vibrant 3D cartoon style, Disney/Pixar inspired, high detail",
+        "negative": (
+            "deformed hands, extra fingers, missing fingers, bad anatomy, "
+            "deformed feet, ugly hands, fused fingers, mutated hands, "
+            "photorealistic, dark, scary, text, watermark, blurry, deformed, ugly, low quality, sketch, grayscale"
+        ),
+        "pdf_panel_border": False,
+    },
+    "📰 Comic Strip": {
+        "label": "Comic Strip",
+        "image_style": (
+            "children's comic book panel illustration, bold clean ink outlines, "
+            "flat vibrant colours, Tintin and Asterix and Beano inspired, "
+            "expressive cartoon faces, dynamic composition, bright cheerful comic art, "
+            "clear panel framing, no speech bubbles, no text in image"
+        ),
+        "ref_style": "children's comic book style, bold ink outlines, flat bright colours, Tintin/Asterix inspired",
+        "negative": (
+            "photorealistic, 3D render, blurry, deformed, ugly, dark, scary, "
+            "text, watermark, speech bubbles, low quality, extra fingers, bad anatomy"
+        ),
+        "pdf_panel_border": True,
+    },
+}
+
 @st.cache_resource
 def register_fonts():
     registered = {}
@@ -1095,45 +1134,6 @@ def generate_character_reference(memory, age, gender, fav_colour, visual_style="
         base += f", wearing {fav_colour} outfit"
     return base
 
-
-# ==============================
-# VISUAL STYLES
-# ==============================
-
-VISUAL_STYLES = {
-    "🎨 Illustrated Storybook": {
-        "label": "Illustrated Storybook",
-        "image_style": (
-            "vibrant children's book illustration, 3D cartoon style, "
-            "bright saturated colors, Disney and Pixar inspired art, "
-            "clean professional illustration, expressive cute characters, "
-            "rich detailed colorful background, warm cheerful lighting, "
-            "high quality digital art, playful and charming"
-        ),
-        "ref_style": "vibrant 3D cartoon style, Disney/Pixar inspired, high detail",
-        "negative": (
-            "deformed hands, extra fingers, missing fingers, bad anatomy, "
-            "deformed feet, ugly hands, fused fingers, mutated hands, "
-            "photorealistic, dark, scary, text, watermark, blurry, deformed, ugly, low quality, sketch, grayscale"
-        ),
-        "pdf_panel_border": False,
-    },
-    "📰 Comic Strip": {
-        "label": "Comic Strip",
-        "image_style": (
-            "children's comic book panel illustration, bold clean ink outlines, "
-            "flat vibrant colours, Tintin and Asterix and Beano inspired, "
-            "expressive cartoon faces, dynamic composition, bright cheerful comic art, "
-            "clear panel framing, no speech bubbles, no text in image"
-        ),
-        "ref_style": "children's comic book style, bold ink outlines, flat bright colours, Tintin/Asterix inspired",
-        "negative": (
-            "photorealistic, 3D render, blurry, deformed, ugly, dark, scary, "
-            "text, watermark, speech bubbles, low quality, extra fingers, bad anatomy"
-        ),
-        "pdf_panel_border": True,
-    },
-}
 
 # ==============================
 # IMAGE PROMPT BUILDER
