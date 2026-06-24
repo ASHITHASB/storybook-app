@@ -677,7 +677,29 @@ def build_image_prompt(scene, memory, age, gender, fav_colour):
     return f"{character}, {scene}, {style}", negative
 
 
+def generate_image_gemini_flash(prompt_text):
+    """Gemini 2.0 Flash image generation (experimental)."""
+    if not google_client:
+        return None
+    try:
+        from google.genai import types as gtypes
+        response = google_client.models.generate_content(
+            model="gemini-2.0-flash-preview-image-generation",
+            contents=prompt_text,
+            config=gtypes.GenerateContentConfig(
+                response_modalities=["IMAGE", "TEXT"],
+            ),
+        )
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, "inline_data") and part.inline_data is not None:
+                return part.inline_data.data
+    except Exception:
+        pass
+    return None
+
+
 def generate_image_imagen3(prompt_text):
+    """Imagen 3 — Google's dedicated image generation model."""
     if not google_client:
         return None
     try:
@@ -735,12 +757,30 @@ def generate_image_pollinations(scene, memory, age, gender, fav_colour):
 
 
 def get_image(scene, memory, age, gender, fav_colour):
+    """Try all image generators in order. Retry Pollinations up to 3x to guarantee an image."""
     prompt_text, negative = build_image_prompt(scene, memory, age, gender, fav_colour)
-    return (
-        generate_image_imagen3(prompt_text)
+
+    img = (
+        generate_image_gemini_flash(prompt_text)
+        or generate_image_imagen3(prompt_text)
         or generate_image_hf(prompt_text, negative)
-        or generate_image_pollinations(scene, memory, age, gender, fav_colour)
     )
+    if img:
+        return img
+
+    # Pollinations with retries — vary seed each attempt for a fresh result
+    for attempt in range(3):
+        encoded = urllib.parse.quote(prompt_text)
+        seed = (abs(hash(scene)) + attempt * 7919) % 99999
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=512&seed={seed}&nologo=true"
+        try:
+            r = requests.get(url, timeout=45)
+            if r.status_code == 200 and len(r.content) > 5000:
+                return r.content
+        except Exception:
+            time.sleep(3)
+
+    return None  # should rarely reach here
 
 
 structured_pages = []
