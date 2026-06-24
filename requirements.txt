@@ -3,3 +3,6 @@ openai
 supabase
 reportlab
 requests
+google-genai
+dashscope
+sarvamai

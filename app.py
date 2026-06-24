@@ -44,6 +44,13 @@ google_client = google_genai.Client(api_key=GOOGLE_API_KEY) if (GOOGLE_GENAI_AVA
 
 DASHSCOPE_API_KEY = st.secrets.get("DASHSCOPE_API_KEY", "")
 
+SARVAM_API_KEY = st.secrets.get("SARVAM_API_KEY", "")
+try:
+    from sarvamai import SarvamAI
+    sarvam_client = SarvamAI(api_key=SARVAM_API_KEY) if SARVAM_API_KEY else None
+except ImportError:
+    sarvam_client = None
+
 MAX_ATTEMPTS = 3
 
 # ==============================
@@ -241,6 +248,82 @@ TEMPLATES = {
             },
         ],
     },
+    "Diwali Night 🪔": {
+        "tagline": "The brightest night of the year — full of light, family, and love.",
+        "theme": "Family & Joy 🏮",
+        "pages": [
+            {
+                "text": "{name} had been counting the days to Diwali for a very long time indeed. Today was finally the day, and the whole house smelled of marigolds, ghee, and the very best kind of excitement.",
+                "scene": "a child standing in a beautifully decorated Indian home at dusk, marigold garlands hanging, clay diyas unlit on the windowsill, warm golden light, expression of pure excitement, vibrant and colourful traditional home",
+            },
+            {
+                "text": "Together with Mum, {name} rolled the wicks and filled each tiny diya with golden oil. {He_She} counted them carefully — there were twenty-seven. Every single one needed to shine.",
+                "scene": "a child and parent sitting on the floor together, carefully filling small clay diyas with oil and placing cotton wicks, warm afternoon light, brass plates and flowers nearby, cosy Indian home",
+            },
+            {
+                "text": "When the first diya was lit, something magical happened. The whole room seemed to breathe in — and then glow. {name} watched the tiny flame dance and felt something warm bloom in {his_her} chest.",
+                "scene": "a child lighting the first clay diya with a long matchstick in a darkening room, the flame catching and casting warm golden light on the child's face, other diyas waiting nearby, magical glow",
+            },
+            {
+                "text": "Nani arrived with a big box of mithai — barfi and ladoo and jalebi piled high. She pressed a ladoo straight into {name}'s mouth before {he_she} could even say hello. {He_She} didn't mind at all.",
+                "scene": "an elderly grandmother arriving at the door carrying a large box of Indian sweets, a child reaching in with delighted expression, bright lights and decorations, warm family gathering",
+            },
+            {
+                "text": "Outside, the lane had turned into something like a dream. Every doorstep glowed with diyas, every balcony with fairy lights. {name} held Nani's hand and walked very slowly, wanting to remember every single moment.",
+                "scene": "a child walking hand in hand with an elderly grandmother along a lane lined with glowing diyas and fairy lights on Diwali night, neighbours at their doors, warm magical festive atmosphere",
+            },
+            {
+                "text": "Then — BOOM! — the first firecracker burst into a shower of silver stars above the rooftops. {name} gasped and then burst out laughing. The sky was celebrating too.",
+                "scene": "a child looking up at a burst of silver and gold fireworks above rooftops on Diwali night, expression of wonder and delight, warm glowing street below, family nearby",
+            },
+            {
+                "text": "Back home, they sat on the rooftop together — Mum, Dad, Nani, and {name} — and watched the whole city sparkle. {name} felt so full of love {he_she} thought {he_she} might burst, just like a firecracker.",
+                "scene": "a family sitting together on a rooftop at night watching Diwali fireworks, the city lit up below, warm and cosy together, the child leaning against a grandparent, sky full of colour",
+            },
+            {
+                "text": "That night, {name} lay in bed with the smell of smoke and marigolds still in the air, and the warmth of the whole day still glowing inside {him_her}. Some nights, {he_she} thought, are made of pure gold.",
+                "scene": "a child lying contentedly in bed at night, eyes just closing, the soft glow of a diya visible at the window, peaceful and happy, the room still warm with the magic of Diwali",
+            },
+        ],
+    },
+    "Nani's Kitchen 🍚": {
+        "tagline": "The most magical place in the world smells like cardamom and love.",
+        "theme": "Love & Belonging 💛",
+        "pages": [
+            {
+                "text": "Every summer, {name} got to spend a whole week at Nani's house — and every summer, it felt like arriving somewhere {he_she} had always belonged. The moment the door opened, the whole house smelled like cardamom and love.",
+                "scene": "a child arriving at a grandmother's traditional Indian home, the door opening to reveal warm light and an elderly woman with open arms, the child stepping inside joyfully, summer sunlight outside",
+            },
+            {
+                "text": "Nani's kitchen was the heart of the house. It had brass vessels stacked to the ceiling, bundles of dried herbs, and a big wooden spoon that Nani said had been stirring things for fifty years. {name} believed her completely.",
+                "scene": "a warm and colourful Indian grandmother's kitchen with brass vessels on shelves, dried herbs hanging, a large wooden spoon on the counter, cosy and full of character, warm golden light",
+            },
+            {
+                "text": "'Today,' said Nani, tying an apron around {name}'s middle, 'you learn to make kheer.' {He_She} handed {name} the wooden spoon and pointed at the pot. 'You stir. Slowly. With love. That is the secret ingredient.'",
+                "scene": "an elderly grandmother tying a small apron around a child in a kitchen, handing them a large wooden spoon, pointing at a pot on the stove, warm and affectionate expression, Indian kitchen setting",
+            },
+            {
+                "text": "{name} stirred and stirred while Nani added milk, then rice, then three cardamom pods that she crushed between her fingers like magic. The kitchen filled with the most beautiful smell {name} had ever known.",
+                "scene": "a child stirring a large pot on a stove while an elderly grandmother adds ingredients, cardamom pods and small bowls of sugar and saffron nearby, steam rising, cosy Indian kitchen, both smiling",
+            },
+            {
+                "text": "But {name} stirred a little too enthusiastically, and a great wave of kheer leapt out of the pot and onto Nani's apron. There was a terrible moment of silence. Then Nani laughed — a huge, wonderful, rolling laugh.",
+                "scene": "a child looking mortified as kheer (rice pudding) has splashed onto an elderly grandmother's apron, the grandmother laughing warmly with her head thrown back, the pot on the stove behind them",
+            },
+            {
+                "text": "They ate the kheer on the rooftop as the sun went down, just the two of them, in bowls with silver spoons. It was, {name} decided, the most delicious thing {he_she} had ever tasted. Even with the spilling.",
+                "scene": "a child and an elderly grandmother sitting together on a rooftop at sunset, eating from small silver bowls, warm golden light, comfortable and happy together, the city soft in the background",
+            },
+            {
+                "text": "That evening, Nani taught {name} one more thing — how to make chai. There was ginger and milk and two spoons of sugar and Nani saying 'a little more, a little more' until it was exactly right.",
+                "scene": "an elderly grandmother and a child standing at a stove making chai together, the grandmother guiding the child's hand, steam rising from the pot, warm kitchen light, jars of spices visible",
+            },
+            {
+                "text": "When {name} went home at the end of the week, Nani pressed the old wooden spoon into {his_her} hands. 'So you remember,' she said. {name} held it all the way home. {He_She} did not need reminding.",
+                "scene": "a child holding a large old wooden spoon and looking up at an elderly grandmother in a doorway, both with soft happy expressions, the grandmother's hand on the child's cheek, warm evening light",
+            },
+        ],
+    },
     "Unicorn Magic 🦄": {
         "tagline": "Some friendships are truly magical.",
         "theme": "Kindness 💖",
@@ -286,18 +369,47 @@ TEMPLATES = {
 # ==============================
 
 LANGUAGES = {
-    "English": {"prompt_lang": "English", "font_name": "Helvetica", "font_path": None},
+    "English": {
+        "prompt_lang": "English", "font_name": "Helvetica", "font_path": None,
+        "use_sarvam": False,
+        "persona": None,
+        "template_only": False,
+    },
     "Hindi (हिंदी)": {
         "prompt_lang": "Hindi", "font_name": "NotoDevanagari",
         "font_path": "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
+        # GPT-4o handles Hindi reasonably — persona prompt improves naturalness significantly
+        "use_sarvam": False,
+        "persona": (
+            "Aap ek pyaari si Dadi hain jo apni choti naati/naatey ko sone se pehle pyaar se kahani suna rahi hain. "
+            "Aap simple, rozmarra ki Hindi mein likhti hain — bilkul aise jaise ghar pe bol-chaal hoti hai. "
+            "Koi literary ya kitabi Hindi nahi. Chote chote vaakya. Dil ko chhune waali zubaan."
+        ),
+        "template_only": True,
     },
     "Tamil (தமிழ்)": {
         "prompt_lang": "Tamil", "font_name": "NotoTamil",
         "font_path": "/usr/share/fonts/truetype/noto/NotoSansTamil-Regular.ttf",
+        # Sarvam AI gives significantly better Tamil quality than GPT-4o
+        "use_sarvam": True,
+        "persona": (
+            "Neenga oru anbu paatti, thoonguvatharku mun ungal peran/petti'kku kadhai solkireenga. "
+            "Saralaana, anbaana, veetu Tamil payanpaduttunga — literary Tamil alla. "
+            "Kuruiya vaakiyangal. Illam pesa palavaam pola."
+        ),
+        "template_only": True,
     },
     "Malayalam (മലയാളം)": {
         "prompt_lang": "Malayalam", "font_name": "NotoMalayalam",
         "font_path": "/usr/share/fonts/truetype/noto/NotoSansMalayalam-Regular.ttf",
+        # Sarvam AI gives significantly better Malayalam quality than GPT-4o
+        "use_sarvam": True,
+        "persona": (
+            "Ningal oru snehamulla Ammachi aanu, uyakkathinu mun ningalude paerakuttikku kadha parayan. "
+            "Lalikamaya, veettile samsaara bhasha upayogikkanam — formal Malayalam alla. "
+            "Kuriya vaakyankal. Snaehavumaaya swaravum."
+        ),
+        "template_only": True,
     },
 }
 
@@ -470,7 +582,7 @@ with tab_template:
     st.info(f"**{template_name}** — {t['tagline']}")
 
     st.markdown("### About the child")
-    tc1, tc2, tc3, tc4 = st.columns(4)
+    tc1, tc2, tc3, tc4, tc5 = st.columns(5)
     with tc1:
         t_name = st.text_input("Child's name", key="t_name", placeholder="e.g. Layla")
     with tc2:
@@ -479,6 +591,10 @@ with tab_template:
         t_gender = st.selectbox("Gender", ["Girl", "Boy"], key="t_gender")
     with tc4:
         t_lang = st.selectbox("Language", list(LANGUAGES.keys()), key="t_lang")
+    with tc5:
+        if LANGUAGES[t_lang].get("template_only"):
+            st.markdown("")  # spacer
+            st.caption("🇮🇳 Vernacular stories are template-only for now")
 
     st.markdown("### Child's appearance")
     t_photo = st.file_uploader(
@@ -497,6 +613,16 @@ with tab_template:
         t_hair = t_skin = ""
         t_colour = st.text_input("Favourite colour (outfit)", key="t_colour", placeholder="e.g. purple")
         st.caption("✅ Photo uploaded — we'll extract the appearance automatically.")
+
+    st.markdown("### Visual style")
+    t_style = st.radio(
+        "Visual style",
+        list(VISUAL_STYLES.keys()),
+        horizontal=True,
+        key="t_style",
+        label_visibility="collapsed",
+        captions=["Disney/Pixar 3D art", "Bold ink, flat colour"],
+    )
 
     if st.session_state.attempt_count < MAX_ATTEMPTS:
         if st.button("✦ Preview My Story", key="btn_template", disabled=not t_name.strip()):
@@ -527,7 +653,7 @@ with tab_template:
             st.session_state["_params"] = {
                 "name": t_name, "age": t_age, "gender": t_gender,
                 "language": t_lang, "template_name": template_name,
-                "fav_colour": t_colour,
+                "fav_colour": t_colour, "visual_style": t_style,
             }
             st.rerun()
     else:
@@ -539,15 +665,15 @@ with tab_template:
 
 with tab_custom:
     st.markdown("### About the child")
-    cc1, cc2, cc3, cc4 = st.columns(4)
+    cc1, cc2, cc3 = st.columns(3)
     with cc1:
         c_name = st.text_input("Child's name", key="c_name", placeholder="e.g. Arjun")
     with cc2:
         c_age = st.selectbox("Age", [3, 4, 5, 6, 7, 8], key="c_age")
     with cc3:
         c_gender = st.selectbox("Gender", ["Girl", "Boy"], key="c_gender")
-    with cc4:
-        c_lang = st.selectbox("Language", list(LANGUAGES.keys()), key="c_lang")
+    c_lang = "English"  # Vernacular for custom stories coming soon
+    st.caption("🌐 Custom stories are in English. Hindi / Tamil / Malayalam coming soon for custom mode.")
 
     c_theme = st.selectbox("Story theme", [
         "Kindness 💖", "Courage 🦁", "Friendship 🤝",
@@ -608,6 +734,16 @@ with tab_custom:
         )
         c_opening = c_challenge = c_turning = c_resolution = None
 
+    st.markdown("### Visual style")
+    c_style = st.radio(
+        "Visual style",
+        list(VISUAL_STYLES.keys()),
+        horizontal=True,
+        key="c_style",
+        label_visibility="collapsed",
+        captions=["Disney/Pixar 3D art", "Bold ink, flat colour"],
+    )
+
     if st.session_state.attempt_count < MAX_ATTEMPTS:
         if st.button("✦ Preview My Story", key="btn_custom", disabled=not c_name.strip()):
             if not c_name.strip():
@@ -642,7 +778,7 @@ with tab_custom:
                 "plot_mode": plot_mode,
                 "opening": c_opening, "challenge": c_challenge,
                 "turning": c_turning, "resolution": c_resolution,
-                "freewrite": c_freewrite,
+                "freewrite": c_freewrite, "visual_style": c_style,
             }
             st.rerun()
     else:
@@ -735,10 +871,95 @@ def parse_story(raw):
     return []
 
 
+def _age_complexity_guide(age):
+    """Return age-appropriate sentence complexity guidance."""
+    if age <= 4:
+        return (
+            "Write VERY short, simple sentences — maximum 8 words each. "
+            "Use only the most basic everyday vocabulary a toddler knows. "
+            "Repeat key words warmly. Think: board book simplicity."
+        )
+    elif age <= 6:
+        return (
+            "Write short, simple sentences — maximum 12 words each. "
+            "Use warm, everyday vocabulary. Simple cause-and-effect. "
+            "Think: early reader picture book."
+        )
+    else:
+        return (
+            "Write warm, engaging sentences. Up to 20 words. "
+            "Can include gentle humour and richer description. "
+            "Think: classic children's illustrated chapter book."
+        )
+
+
+def _generate_vernacular_page(scene, name, gender, age, lang_key, page_number):
+    """
+    Generate one story page natively in the target language from a scene description.
+    Uses Sarvam AI for Tamil/Malayalam, GPT-4o for Hindi.
+    This produces natural, age-appropriate vernacular — not a translation.
+    """
+    lang_cfg = LANGUAGES[lang_key]
+    prompt_lang = lang_cfg["prompt_lang"]
+    persona = lang_cfg.get("persona", "")
+    age_guide = _age_complexity_guide(age)
+    pronoun_hint = "girl / she / her" if gender == "Girl" else "boy / he / him"
+
+    prompt = f"""You are a beloved children's storybook author. {persona}
+
+Write 2–3 warm, lyrical sentences in {prompt_lang} for page {page_number} of a children's storybook.
+
+Story context:
+- Main character: {name} (a {age}-year-old {pronoun_hint})
+- Scene to illustrate: {scene}
+
+Writing rules:
+- {age_guide}
+- Write ONLY in {prompt_lang} — no English words except the name '{name}'
+- Keep the name '{name}' exactly as written
+- Warm, loving, bedtime-story tone
+- No bold, no asterisks, no punctuation other than . , ! ?
+- Return ONLY the story text. Nothing else."""
+
+    # Route to Sarvam for Tamil/Malayalam (better script quality)
+    if lang_cfg.get("use_sarvam") and sarvam_client:
+        try:
+            r = sarvam_client.chat.completions.create(
+                model="sarvam-m",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.75,
+                max_tokens=200,
+            )
+            text = r.choices[0].message.content.strip()
+            if text:
+                return text
+        except Exception:
+            pass  # Fall through to GPT-4o
+
+    # GPT-4o for Hindi (and Sarvam fallback)
+    for model in ["gpt-4o", "gpt-4o-mini"]:
+        try:
+            r = openai_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.75,
+                max_tokens=200,
+            )
+            text = r.choices[0].message.content.strip()
+            if text:
+                return text
+        except Exception as e:
+            if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
+                continue
+            break
+    return None
+
+
 def build_template_pages(p, prompt_lang):
     """
-    Template mode: substitute placeholders in pre-baked story pages.
-    For non-English: translate all 8 page texts in one GPT call (fast + cheap).
+    Template mode:
+    - English: substitute {name}/{pronoun} placeholders in pre-baked pages (instant, no API call)
+    - Vernacular: generate each page natively from scene description (not translated)
     """
     t = TEMPLATES[p["template_name"]]
     if p["gender"] == "Girl":
@@ -753,35 +974,19 @@ def build_template_pages(p, prompt_lang):
             text = text.replace("{" + key + "}", val)
         pages.append({"text": text, "scene": pg["scene"]})
 
-    # For vernacular: one batch translation call instead of full story generation
-    if prompt_lang != "English":
-        texts = [pg["text"] for pg in pages]
-        translation_prompt = (
-            f"Translate each of these 8 children's storybook sentences to {prompt_lang}. "
-            f"Keep the name '{p['name']}' exactly as-is. "
-            "Return ONLY the translated sentences, numbered 1–8, one per line. No extra commentary.\n\n"
-            + "\n".join(f"{i+1}. {t}" for i, t in enumerate(texts))
+    if prompt_lang == "English":
+        return pages
+
+    # Vernacular: generate each page natively from scene description
+    lang_key = p["language"]
+    for i, pg in enumerate(pages):
+        native = _generate_vernacular_page(
+            pg["scene"], p["name"], p["gender"], p["age"],
+            lang_key, page_number=i + 1,
         )
-        for model in ["gpt-4o", "gpt-4o-mini"]:
-            try:
-                r = openai_client.chat.completions.create(
-                    model=model,
-                    messages=[{"role": "user", "content": translation_prompt}],
-                    temperature=0.2,
-                )
-                translated = [
-                    re.sub(r"^\d+[\.\-]\s*", "", line).strip()
-                    for line in r.choices[0].message.content.strip().split("\n")
-                    if line.strip()
-                ]
-                if len(translated) == 8:
-                    for i, pg in enumerate(pages):
-                        pg["text"] = translated[i]
-                break
-            except Exception as e:
-                if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
-                    continue
-                break
+        if native:
+            pg["text"] = native
+        # If generation fails for a page, keep the English text as fallback
 
     return pages
 
@@ -818,18 +1023,20 @@ fav_colour = p.get("fav_colour", "")
 # CHARACTER REFERENCE (phase 1a — before page generation)
 # ==============================
 
-def generate_character_reference(memory, age, gender, fav_colour):
+def generate_character_reference(memory, age, gender, fav_colour, visual_style="🎨 Illustrated Storybook"):
     """
     Generate one canonical character-sheet image, then use GPT-4o vision
     to extract an ultra-precise description. All page images use this
     anchored description for visual consistency.
     """
-    colour_note = f"wearing {fav_colour} outfit," if fav_colour else ""
+    style_cfg = VISUAL_STYLES.get(visual_style, VISUAL_STYLES["🎨 Illustrated Storybook"])
+    colour_note = f"wearing a {fav_colour} coloured outfit," if fav_colour else ""
+    colour_emphasis = f" IMPORTANT: the child's outfit must be {fav_colour} coloured." if fav_colour else ""
     ref_prompt = (
         f"Children's book character reference sheet: a {age} year old {gender.lower()} child, "
         f"{memory}, {colour_note} "
         f"front-facing, neutral friendly smile, full body view, plain white background, "
-        f"vibrant 3D cartoon style, Disney/Pixar inspired, high detail, no text"
+        f"{style_cfg['ref_style']}, no text.{colour_emphasis}"
     )
 
     # Generate reference image — Nano Banana Pro's thinking process is ideal here
@@ -864,7 +1071,17 @@ def generate_character_reference(memory, age, gender, fav_colour):
         for model in ["gpt-4o", "gpt-4o-mini"]:
             try:
                 r = openai_client.chat.completions.create(model=model, messages=messages, max_tokens=100)
-                return r.choices[0].message.content.strip()
+                desc = r.choices[0].message.content.strip()
+                # Always enforce the requested outfit colour — image generators don't always obey
+                if fav_colour and fav_colour.lower() not in desc.lower():
+                    desc = re.sub(
+                        r'\b(red|blue|yellow|pink|purple|orange|white|black|brown|grey|gray|teal|navy|maroon|beige|gold|silver|green|cyan|violet)\b(\s+\w+)?\s+(outfit|shirt|dress|top|jacket|clothes|jumper|t-shirt)',
+                        f'{fav_colour} outfit',
+                        desc, flags=re.IGNORECASE,
+                    )
+                    if fav_colour.lower() not in desc.lower():
+                        desc += f", wearing {fav_colour} outfit"
+                return desc
             except Exception as e:
                 if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
                     continue
@@ -872,35 +1089,68 @@ def generate_character_reference(memory, age, gender, fav_colour):
     except Exception:
         pass
 
-    return memory   # fallback if vision fails
+    # Fallback: original description + colour guarantee
+    base = memory
+    if fav_colour and fav_colour.lower() not in base.lower():
+        base += f", wearing {fav_colour} outfit"
+    return base
 
+
+# ==============================
+# VISUAL STYLES
+# ==============================
+
+VISUAL_STYLES = {
+    "🎨 Illustrated Storybook": {
+        "label": "Illustrated Storybook",
+        "image_style": (
+            "vibrant children's book illustration, 3D cartoon style, "
+            "bright saturated colors, Disney and Pixar inspired art, "
+            "clean professional illustration, expressive cute characters, "
+            "rich detailed colorful background, warm cheerful lighting, "
+            "high quality digital art, playful and charming"
+        ),
+        "ref_style": "vibrant 3D cartoon style, Disney/Pixar inspired, high detail",
+        "negative": (
+            "deformed hands, extra fingers, missing fingers, bad anatomy, "
+            "deformed feet, ugly hands, fused fingers, mutated hands, "
+            "photorealistic, dark, scary, text, watermark, blurry, deformed, ugly, low quality, sketch, grayscale"
+        ),
+        "pdf_panel_border": False,
+    },
+    "📰 Comic Strip": {
+        "label": "Comic Strip",
+        "image_style": (
+            "children's comic book panel illustration, bold clean ink outlines, "
+            "flat vibrant colours, Tintin and Asterix and Beano inspired, "
+            "expressive cartoon faces, dynamic composition, bright cheerful comic art, "
+            "clear panel framing, no speech bubbles, no text in image"
+        ),
+        "ref_style": "children's comic book style, bold ink outlines, flat bright colours, Tintin/Asterix inspired",
+        "negative": (
+            "photorealistic, 3D render, blurry, deformed, ugly, dark, scary, "
+            "text, watermark, speech bubbles, low quality, extra fingers, bad anatomy"
+        ),
+        "pdf_panel_border": True,
+    },
+}
 
 # ==============================
 # IMAGE PROMPT BUILDER
 # ==============================
 
-ANATOMY_NEGATIVE = (
-    "deformed hands, extra fingers, missing fingers, bad anatomy, "
-    "deformed feet, ugly hands, fused fingers, mutated hands, "
-    "photorealistic, dark, scary, text, watermark, blurry, deformed, ugly, low quality, sketch, grayscale"
-)
-
-def build_image_prompt(scene, anchored_memory, age, gender, fav_colour):
-    colour_note = f"wearing {fav_colour} outfit," if fav_colour else ""
+def build_image_prompt(scene, anchored_memory, age, gender, fav_colour, visual_style="🎨 Illustrated Storybook"):
+    style_cfg = VISUAL_STYLES.get(visual_style, VISUAL_STYLES["🎨 Illustrated Storybook"])
+    colour_instruction = (
+        f"wearing a {fav_colour} outfit — outfit colour is {fav_colour}, this is mandatory,"
+        if fav_colour else ""
+    )
     character = (
-        f"a {age} year old {gender.lower()} child, {anchored_memory}, {colour_note}"
+        f"a {age} year old {gender.lower()} child, {anchored_memory}, {colour_instruction} "
         f"exact same character design on every page"
     )
-    # Force medium/wide shots in the style tag to avoid anatomy-heavy close-ups
     framing = "medium shot or wide shot, full scene visible, no extreme close-ups of hands or feet"
-    style = (
-        "vibrant children's book illustration, 3D cartoon style, "
-        "bright saturated colors, Disney and Pixar inspired art, "
-        "clean professional illustration, expressive cute characters, "
-        "rich detailed colorful background, warm cheerful lighting, "
-        "high quality digital art, playful and charming"
-    )
-    return f"{character}, {scene}, {framing}, {style}", ANATOMY_NEGATIVE
+    return f"{character}, {scene}, {framing}, {style_cfg['image_style']}", style_cfg["negative"]
 
 
 # ==============================
@@ -1018,9 +1268,9 @@ def _hf(prompt_text, negative):
     return None
 
 
-def get_image(scene, anchored_memory, age, gender, fav_colour):
+def get_image(scene, anchored_memory, age, gender, fav_colour, visual_style="🎨 Illustrated Storybook"):
     """Fallback chain: DALL-E 3 → Qwen → Nano Banana 2 → Nano Banana Fast → SDXL → Pollinations."""
-    prompt_text, negative = build_image_prompt(scene, anchored_memory, age, gender, fav_colour)
+    prompt_text, negative = build_image_prompt(scene, anchored_memory, age, gender, fav_colour, visual_style)
 
     img = (
         _dalle3(prompt_text)
@@ -1046,10 +1296,11 @@ def get_image(scene, anchored_memory, age, gender, fav_colour):
     return None
 
 
-name     = p["name"]
-age      = p["age"]
-gender   = p["gender"]
-language = p["language"]
+name         = p["name"]
+age          = p["age"]
+gender       = p["gender"]
+language     = p["language"]
+visual_style = p.get("visual_style", "🎨 Illustrated Storybook")
 theme_display = TEMPLATES[p["template_name"]]["theme"] if mode == "template" else p.get("theme", "")
 
 PREVIEW_PAGES = 2   # number of pages illustrated in preview
@@ -1058,15 +1309,27 @@ PREVIEW_PAGES = 2   # number of pages illustrated in preview
 # PDF BUILDER
 # ==============================
 
-def create_pdf(pages, name, theme, language):
+def create_pdf(pages, name, theme, language, visual_style="🎨 Illustrated Storybook"):
+    from reportlab.platypus import Table, TableStyle
+    from reportlab.lib import colors as rl_colors
+
     file_path = "/tmp/storybook.pdf"
+    is_comic = VISUAL_STYLES.get(visual_style, {}).get("pdf_panel_border", False)
+
     doc = SimpleDocTemplate(file_path, pagesize=A5,
                             leftMargin=0.55*inch, rightMargin=0.55*inch,
                             topMargin=0.55*inch, bottomMargin=0.55*inch)
     font_name = font_registry.get(language, "Helvetica")
-    title_style    = ParagraphStyle("Title",    fontName=font_name, fontSize=22, alignment=TA_CENTER, spaceAfter=8,  leading=30)
-    subtitle_style = ParagraphStyle("Subtitle", fontName=font_name, fontSize=12, alignment=TA_CENTER, textColor=(0.55, 0.35, 0.15), leading=18)
-    body_style     = ParagraphStyle("Body",     fontName=font_name, fontSize=13, alignment=TA_CENTER, leading=22,   spaceAfter=6)
+
+    if is_comic:
+        title_style    = ParagraphStyle("Title",    fontName=font_name, fontSize=22, alignment=TA_CENTER, spaceAfter=8,  leading=30, textColor=(0.05, 0.05, 0.05))
+        subtitle_style = ParagraphStyle("Subtitle", fontName=font_name, fontSize=12, alignment=TA_CENTER, textColor=(0.2, 0.2, 0.2), leading=18)
+        body_style     = ParagraphStyle("Body",     fontName=font_name, fontSize=12, alignment=TA_CENTER, leading=20, spaceAfter=6, textColor=(0.1, 0.1, 0.1))
+    else:
+        title_style    = ParagraphStyle("Title",    fontName=font_name, fontSize=22, alignment=TA_CENTER, spaceAfter=8,  leading=30)
+        subtitle_style = ParagraphStyle("Subtitle", fontName=font_name, fontSize=12, alignment=TA_CENTER, textColor=(0.55, 0.35, 0.15), leading=18)
+        body_style     = ParagraphStyle("Body",     fontName=font_name, fontSize=13, alignment=TA_CENTER, leading=22, spaceAfter=6)
+
     elements = [
         Spacer(1, 1.4*inch),
         Paragraph(f"{name}'s Magical Story", title_style),
@@ -1074,12 +1337,28 @@ def create_pdf(pages, name, theme, language):
         Paragraph(theme, subtitle_style),
         PageBreak(),
     ]
+
     for page in pages:
         if page.get("image_path") and os.path.exists(page["image_path"]):
-            elements.append(Image(page["image_path"], width=4.3*inch, height=3.2*inch))
+            img_elem = Image(page["image_path"], width=4.3*inch, height=3.2*inch)
+            if is_comic:
+                # Wrap in a black-bordered panel frame
+                panel = Table([[img_elem]], colWidths=[4.3*inch])
+                panel.setStyle(TableStyle([
+                    ('BOX',        (0, 0), (-1, -1), 2.5, rl_colors.black),
+                    ('BACKGROUND', (0, 0), (-1, -1), rl_colors.white),
+                    ('TOPPADDING',    (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                    ('LEFTPADDING',   (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
+                ]))
+                elements.append(panel)
+            else:
+                elements.append(img_elem)
             elements.append(Spacer(1, 0.15*inch))
         elements.append(Paragraph(page["text"], body_style))
         elements.append(PageBreak())
+
     doc.build(elements)
     return file_path
 
@@ -1111,14 +1390,14 @@ if not st.session_state.get("_preview_done"):
 
     # Generate character reference image for visual consistency
     prog.progress(15, text="Creating character reference for consistency...")
-    anchored_memory = generate_character_reference(memory, age, gender, fav_colour)
+    anchored_memory = generate_character_reference(memory, age, gender, fav_colour, visual_style)
     st.session_state["_anchored_memory"] = anchored_memory
 
     prog.progress(25, text=f"Story written! Illustrating first {PREVIEW_PAGES} pages for preview...")
 
     for i in range(min(PREVIEW_PAGES, len(pages))):
         prog.progress(25 + int((i + 1) / PREVIEW_PAGES * 70), text=f"Illustrating preview page {i+1}...")
-        img = get_image(pages[i]["scene"], anchored_memory, age, gender, fav_colour)
+        img = get_image(pages[i]["scene"], anchored_memory, age, gender, fav_colour, visual_style)
         pages[i]["image_path"] = save_image(img, i) if img else None
 
     prog.progress(100, text="Preview ready!")
@@ -1188,11 +1467,11 @@ remaining_indices = [i for i in range(len(pages)) if i >= PREVIEW_PAGES or not p
 for step, i in enumerate(remaining_indices):
     pct = int((step + 1) / max(len(remaining_indices), 1) * 85)
     prog.progress(pct, text=f"Illustrating page {i+1} of {len(pages)}...")
-    img = get_image(pages[i]["scene"], anchored_memory, age, gender, fav_colour)
+    img = get_image(pages[i]["scene"], anchored_memory, age, gender, fav_colour, visual_style)
     pages[i]["image_path"] = save_image(img, i) if img else None
 
 prog.progress(90, text="Binding your storybook...")
-pdf_path = create_pdf(pages, name, theme_display, language)
+pdf_path = create_pdf(pages, name, theme_display, language, visual_style)
 prog.progress(100, text="Your storybook is ready!")
 prog.empty()
 
