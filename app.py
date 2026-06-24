@@ -21,9 +21,9 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 try:
     from google import genai as google_genai
-    IMAGEN_AVAILABLE = True
+    GOOGLE_GENAI_AVAILABLE = True
 except ImportError:
-    IMAGEN_AVAILABLE = False
+    GOOGLE_GENAI_AVAILABLE = False
 
 # ==============================
 # CONFIG
@@ -40,7 +40,9 @@ HF_TOKEN = st.secrets.get("HF_TOKEN", "")
 HF_API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
 
 GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", "")
-google_client = google_genai.Client(api_key=GOOGLE_API_KEY) if (IMAGEN_AVAILABLE and GOOGLE_API_KEY) else None
+google_client = google_genai.Client(api_key=GOOGLE_API_KEY) if (GOOGLE_GENAI_AVAILABLE and GOOGLE_API_KEY) else None
+
+DASHSCOPE_API_KEY = st.secrets.get("DASHSCOPE_API_KEY", "")
 
 MAX_ATTEMPTS = 3
 
@@ -52,86 +54,230 @@ TEMPLATES = {
     "First Day of School 🏫": {
         "tagline": "Nervous about something new? You're braver than you think.",
         "theme": "Courage 🦁",
-        "plot": (
-            "Page 1: The night before school, {name} packs their bag excitedly but feels butterflies in their tummy.\n"
-            "Page 2: Morning arrives — {name} gets dressed in their favourite outfit and eats breakfast.\n"
-            "Page 3: {name} arrives at school and sees many new faces and feels a little overwhelmed.\n"
-            "Page 4: {name} sits alone at their desk, missing home and feeling shy.\n"
-            "Page 5: A kind classmate smiles and shares their crayons — they start drawing together.\n"
-            "Page 6: {name} discovers they love story time and playing at recess.\n"
-            "Page 7: At the end of the day, {name} runs home bursting with things to share.\n"
-            "Page 8: That night, {name} lays out their bag for tomorrow — they can't wait to go back."
-        ),
+        "pages": [
+            {
+                "text": "The night before school, {name} carefully packed every crayon and pencil into {his_her} new bag. {He_She} pressed the bag close and breathed in that lovely new-school smell. But deep inside, butterflies danced a nervous little dance.",
+                "scene": "a child sitting on a bedroom floor at night, moonlight through the window, carefully packing a colourful backpack with pencils and crayons, expression of excited nervousness, cosy bedroom with toys and books, warm lamplight",
+            },
+            {
+                "text": "Morning came in bright and golden. {name} put on {his_her} favourite outfit and ate a big bowl of porridge. 'You are ready,' said Mum, giving {him_her} the warmest hug.",
+                "scene": "a sunny kitchen at breakfast time, a child eating porridge at a round table, parent standing nearby smiling warmly, golden morning light streaming through window, cheerful colourful home interior",
+            },
+            {
+                "text": "The school gates were tall and the playground was full of voices {name} did not recognise yet. So many children — all strangers. {He_She} held {his_her} bag straps tight and walked in.",
+                "scene": "a busy school playground, a child stepping bravely through iron gates, sea of cheerful unfamiliar children playing in the background, bright sunny day, colourful school building",
+            },
+            {
+                "text": "{name} sat at a desk near the window and watched the other children quietly. {He_She} missed home and the cosy smell of breakfast. The classroom felt very, very big.",
+                "scene": "a child sitting alone at a classroom desk by a sunny window, looking a little wistful, bright and colourful classroom with alphabet posters and potted plants, warm morning light",
+            },
+            {
+                "text": "Then a smiling face appeared beside {name} — a classmate with paint on {his_her} fingers and a box of shared crayons. 'Want to draw with me?' {he_she} asked. {name}'s heart lit up.",
+                "scene": "two children sitting side by side at a classroom table, one child offering a box of crayons to the other with a shy smile, colourful drawings spread on the table, warm classroom light",
+            },
+            {
+                "text": "Story time was magical, and recess was even better. {name} ran and laughed and discovered that school was full of the most wonderful surprises. {He_She} was not nervous anymore.",
+                "scene": "children playing joyfully at recess on a bright playground, the main child character running and laughing with new friends, bright blue sky, colourful play equipment",
+            },
+            {
+                "text": "When the bell rang, {name} ran through the gate with a heart full to bursting. 'Guess what, Mum!' {he_she} cried, the words tumbling out all at once. 'School is brilliant!'",
+                "scene": "a child running joyfully out of school gates towards a waiting parent with arms wide open, warm afternoon golden light, other happy children and parents in background",
+            },
+            {
+                "text": "That evening, {name} laid out {his_her} bag for tomorrow — carefully, happily — before {he_she} had even had dinner. Because tomorrow, {he_she} could not wait to go back.",
+                "scene": "a child's cosy bedroom in the evening, the child placing a backpack neatly by the door and smiling to themselves, warm lamp light, peaceful and happy atmosphere",
+            },
+        ],
     },
     "Dinosaur Adventure 🦕": {
         "tagline": "What if dinosaurs were friendly and waiting to be found?",
         "theme": "Curiosity 🔍",
-        "plot": (
-            "Page 1: {name} discovers a mysterious glowing egg in the garden.\n"
-            "Page 2: The egg hatches into a tiny, friendly dinosaur with big curious eyes.\n"
-            "Page 3: {name} and the dinosaur explore the neighbourhood together, causing little surprises.\n"
-            "Page 4: The dinosaur gets stuck in a tight spot and {name} must be brave and clever.\n"
-            "Page 5: {name} finds a creative way to free the dinosaur — together they cheer.\n"
-            "Page 6: They share a meal and watch the sunset, the best of friends.\n"
-            "Page 7: The dinosaur must return to the forest — they hug goodbye sadly but warmly.\n"
-            "Page 8: {name} finds a tiny dino footprint the next morning — proof the adventure was real."
-        ),
+        "pages": [
+            {
+                "text": "{name} was digging in the garden after breakfast when the spade hit something hard and strange. It was an egg — smooth as a river stone, and glowing the faintest gold. {He_She} carried it inside very carefully, eyes wide with wonder.",
+                "scene": "a child crouching in a sunlit garden, carefully lifting a small golden glowing egg from the soil, wide excited eyes, colourful flowers around, dappled morning sunlight through garden trees",
+            },
+            {
+                "text": "That night, the egg began to crack. Tiny golden sparks flew out, and then — crack, crack, CRACK — a small head appeared. The tiniest dinosaur {name} had ever seen blinked up at {him_her} with enormous curious eyes.",
+                "scene": "a child's cosy bedroom at night, a glowing egg cracking open on a soft rug, a tiny cute cartoon dinosaur emerging and looking up at the child with big bright eyes, soft golden night light",
+            },
+            {
+                "text": "{name} named the dinosaur Pip, and Pip went absolutely everywhere. The neighbours were very surprised to see them both at the post box. The postman dropped all his letters.",
+                "scene": "a child and a tiny bright-coloured cartoon dinosaur walking cheerfully down a neighbourhood street together, surprised neighbours looking out from doorways, sunny day, colourful houses",
+            },
+            {
+                "text": "Then Pip squeezed into the garden shed and got very, very stuck. {He_She} wriggled and huffed and made the most mournful sound. {name} thought hard. This called for a brilliant plan.",
+                "scene": "a small cute cartoon dinosaur stuck halfway through a garden shed doorway looking worried, a child kneeling outside with hand on chin thinking hard, sunny garden setting",
+            },
+            {
+                "text": "A bucket, a rope, and one very long scarf later — WHOOSH! — out popped Pip like a cork from a bottle. They landed in a heap on the grass, laughing so hard {name}'s sides ached.",
+                "scene": "a child and a small cartoon dinosaur tumbling onto the grass together in a laughing heap, a rope and bright scarf visible, joyful sunny garden afternoon, expressions of pure delight",
+            },
+            {
+                "text": "They shared {name}'s packed lunch under the apple tree — Pip ate all the cucumber, which surprised everyone. The sun was warm and the day was utterly perfect.",
+                "scene": "a child and a small dinosaur sharing a picnic under a large apple tree, the dinosaur eating cucumber delightedly, warm golden afternoon light, peaceful garden setting",
+            },
+            {
+                "text": "But at sunset, Pip's golden glow grew brighter. {He_She} nuzzled {name}'s cheek and pointed toward the forest. {name} hugged Pip for a long, long time before letting go.",
+                "scene": "a child hugging a small glowing cartoon dinosaur at the edge of a forest at sunset, warm golden and orange sky, silhouettes of trees, tender farewell scene",
+            },
+            {
+                "text": "The next morning, {name} found a single tiny footprint in the dewy grass — golden and gleaming like a star. {He_She} smiled. It had all been wonderfully, beautifully real.",
+                "scene": "a tiny golden glowing dinosaur footprint sparkling in dewy morning grass, a child's feet visible at the edge of the frame, soft early morning light, dewdrops catching the sun",
+            },
+        ],
     },
     "Backyard Adventures 🐕": {
-        "tagline": "Imagination turns any backyard into a whole world. (Bluey-inspired)",
+        "tagline": "Imagination turns any backyard into a whole world.",
         "theme": "Friendship 🤝",
-        "plot": (
-            "Page 1: {name} and their dog are in the backyard on a sunny afternoon with nothing planned.\n"
-            "Page 2: {name} decides the yard is actually a jungle — they are the brave explorer.\n"
-            "Page 3: A challenge appears: a wide 'river' to cross (the garden hose, really).\n"
-            "Page 4: {name} builds a bridge from planks and wobbles across with the dog cheering.\n"
-            "Page 5: They discover a 'treasure' buried in the soil — a shiny stone.\n"
-            "Page 6: Mum or Dad joins the game for the grand finale adventure.\n"
-            "Page 7: The game ends as the sun goes down but the magic of the day stays.\n"
-            "Page 8: {name} falls asleep that night already dreaming of tomorrow's adventure."
-        ),
+        "pages": [
+            {
+                "text": "It was a sunny Saturday with absolutely nothing to do — which, {name} had discovered, was the very best kind of day. {He_She} and {his_her} dog, Biscuit, went to sit in the backyard and think.",
+                "scene": "a child and a fluffy golden dog sitting side by side on the grass in a sunny backyard, both looking thoughtful and content, garden fence and flowers in background, bright afternoon light",
+            },
+            {
+                "text": "'This is not just a backyard,' {name} announced to Biscuit very seriously. 'This is the Great Jungle of Zanzibar, and I am the bravest explorer who ever lived.' Biscuit wagged his tail in complete agreement.",
+                "scene": "a child standing heroically in a backyard wearing an improvised explorer's hat, pointing dramatically into the distance, the fluffy dog sitting at attention beside them, leafy garden",
+            },
+            {
+                "text": "The garden hose lay coiled across the grass — clearly a vast and rushing river. Biscuit barked at it. {name} narrowed {his_her} eyes. They would have to find a way across.",
+                "scene": "a child and a dog staring down very seriously at a garden hose as if it were a wide river, both with determined expressions, bright sunny backyard setting",
+            },
+            {
+                "text": "{name} dragged out two planks from the shed and wobbled carefully across the 'river', arms stretched wide for balance. Biscuit bounded over in one magnificent leap and stood waiting proudly on the other side.",
+                "scene": "a child carefully tiptoeing along two wooden planks over a garden hose, arms outstretched for balance, the fluffy dog watching proudly from the far side, sunny backyard",
+            },
+            {
+                "text": "Digging near the roses, {name}'s fingers found something cold and shiny in the soil — a smooth, beautiful stone that caught the light like treasure. 'We found it!' {he_she} gasped. 'The treasure of Zanzibar!'",
+                "scene": "a child holding a smooth shiny stone up triumphantly in the sunlight, the dog jumping up excitedly beside them, a garden with roses in the background, golden afternoon light",
+            },
+            {
+                "text": "Mum came out with juice and biscuits and heard all about Zanzibar. Before anyone knew it, she was wearing a colander hat and had become the expedition's chief map-maker. Biscuit was very pleased with this.",
+                "scene": "a parent wearing a funny colander on their head, sitting in the garden drawing a treasure map, a child and a fluffy dog watching with delight, warm afternoon garden setting",
+            },
+            {
+                "text": "The sun began to lower itself behind the fence, painting everything gold and soft. The Great Jungle of Zanzibar grew quiet. The expedition was over for today — but what an expedition it had been.",
+                "scene": "a child and a dog sitting together on the grass at golden hour watching the sunset, the parent nearby, long warm shadows across the backyard, peaceful beautiful end-of-day light",
+            },
+            {
+                "text": "That night, {name} lay in bed carefully drawing a map of the Great Jungle on a piece of paper. {He_She} would need it for tomorrow. There was still so much of Zanzibar left to explore.",
+                "scene": "a child lying in bed by warm lamplight, drawing a treasure map on paper with focused happy expression, cosy bedroom at night, the fluffy dog asleep on the floor below",
+            },
+        ],
     },
     "Bear & Me 🐻": {
-        "tagline": "Big friends make the world feel smaller. (Masha-inspired)",
+        "tagline": "Big friends make the world feel smaller.",
         "theme": "Friendship 🤝",
-        "plot": (
-            "Page 1: {name} lives near a cosy forest and loves to explore after breakfast.\n"
-            "Page 2: Deep in the trees, {name} meets a big, gentle bear with kind eyes.\n"
-            "Page 3: They bake honey cakes together in the bear's kitchen and make a wonderful mess.\n"
-            "Page 4: The bear teaches {name} how to fish in the sparkling stream.\n"
-            "Page 5: {name} tries to help the bear carry something heavy and causes a funny tumble.\n"
-            "Page 6: They laugh together and solve the problem as a team.\n"
-            "Page 7: Bear tucks {name} into a cosy pile of autumn leaves for a nap in the sun.\n"
-            "Page 8: {name} wakes up at home in their own bed, smiling — was it all a dream?"
-        ),
+        "pages": [
+            {
+                "text": "{name} lived at the edge of a cosy town where the garden ended and the forest began. Every morning, after breakfast, {he_she} would pull on {his_her} boots and go exploring. {He_She} never knew what {he_she} might find.",
+                "scene": "a child in bright yellow boots stepping through a garden gate onto a sunlit forest path, morning light filtering through tall trees, a cosy cottage visible behind, sense of adventure and possibility",
+            },
+            {
+                "text": "That morning, through the silver birch trees, {name} spotted something large and brown and very still. A bear — a big, gentle bear — sat beneath a tree reading a small book with enormous concentration.",
+                "scene": "a large friendly cartoon bear sitting against a birch tree in a sunlit forest, reading a tiny book with great seriousness, a child peering shyly through the trees watching with wide curious eyes",
+            },
+            {
+                "text": "The bear's name was Barnaby, and his kitchen was the warmest, stickiest, most wonderful place {name} had ever been. Together they baked honey cakes and made a truly glorious mess.",
+                "scene": "a child and a large friendly bear baking together in a cosy woodland kitchen, both covered in flour and honey and laughing, warm golden light, kitchen shelves lined with honey jars",
+            },
+            {
+                "text": "Later, Barnaby led {name} to a sparkling stream and placed a small fishing rod in {his_her} hands. 'Patience,' said Barnaby, 'is the most important thing.' {name} tried very, very hard to be patient.",
+                "scene": "a child and a large friendly bear sitting side by side on the bank of a sparkling woodland stream, both holding fishing rods, peaceful dappled light through trees, reflections in the water",
+            },
+            {
+                "text": "{name} decided to help carry Barnaby's enormous honey pot all the way back to the cottage. {He_She} took one handle and Barnaby took the other — but the ground was lumpy, and down they both went with a wonderful THUMP.",
+                "scene": "a child and a large bear tumbling over together in a forest clearing, a large honey pot tipped on its side, honey splashed on both of them, laughing expressions, warm sunny forest",
+            },
+            {
+                "text": "Barnaby laughed until his big round tummy shook like a hill in an earthquake. {name} laughed until {he_she} had to sit down. Then together they picked up every drop and solved the problem perfectly.",
+                "scene": "a child and a bear sitting in sunshine laughing together, both covered in honey, the honey pot safely righted between them, warm forest clearing, completely happy expressions",
+            },
+            {
+                "text": "As the afternoon light turned golden, Barnaby made a soft, deep nest of autumn leaves in a sunny spot and tucked {name} in very gently. The leaves smelled of cinnamon. {He_She} closed {his_her} eyes.",
+                "scene": "a large gentle bear carefully tucking a sleepy child into a cosy pile of golden autumn leaves in a sunlit forest clearing, tender and warm scene, afternoon golden light",
+            },
+            {
+                "text": "{name} woke up in {his_her} own bed, with {his_her} boots still on and a small honey-gold feather on the pillow. {He_She} smiled a very slow, very certain smile. It had been absolutely real.",
+                "scene": "a child waking up in their cosy bedroom still wearing yellow boots, holding a golden feather up in a beam of morning sunlight, smiling with quiet certainty and joy",
+            },
+        ],
     },
     "Mermaid Adventure 🧜": {
         "tagline": "Dive into an underwater kingdom full of colour and wonder.",
         "theme": "Curiosity 🔍",
-        "plot": (
-            "Page 1: {name} finds a glowing pink shell on the beach at sunset.\n"
-            "Page 2: Touching the shell, {name} is magically transformed and sinks gently underwater.\n"
-            "Page 3: A friendly mermaid appears and offers to show {name} the ocean kingdom.\n"
-            "Page 4: They swim past coral castles, playful dolphins and fish of every colour.\n"
-            "Page 5: A tiny seahorse is lost and crying — {name} decides to help find its home.\n"
-            "Page 6: {name} follows a trail of glowing bubbles and reunites the seahorse with its family.\n"
-            "Page 7: The ocean throws a sparkling party in {name}'s honour with singing fish.\n"
-            "Page 8: {name} wakes up on the beach at dawn, the glowing shell safe in their hand."
-        ),
+        "pages": [
+            {
+                "text": "{name} found the shell at the very end of a very long beach, just as the sun was melting into the sea. It was pink and spiralled and glowed like the inside of a dream. {He_She} pressed it gently to {his_her} ear.",
+                "scene": "a child on a golden beach at sunset, holding a beautiful glowing pink spiral shell to their ear, the sea reflecting the golden sunset, warm orange and pink sky",
+            },
+            {
+                "text": "The sea reached up and took {name}'s hand, and suddenly — without any fuss at all — {he_she} was underwater. Everything was blue and shimmering and full of a gentle music {he_she} could completely feel.",
+                "scene": "a child floating gently underwater in glowing blue water, eyes wide with peaceful wonder, colourful fish and soft rays of light all around, magical shimmering underwater world",
+            },
+            {
+                "text": "A mermaid appeared out of the light — graceful and laughing, with hair like swaying green seaweed and a tail like a thousand jewels. 'I've been waiting for you,' she said warmly. 'Come — I'll show you everything.'",
+                "scene": "a beautiful friendly mermaid with a jewelled tail reaching out her hand to a child underwater, smiling warmly, glowing blue water background, tropical fish swimming past",
+            },
+            {
+                "text": "They swam past castles built of coral, through curtains of light and colour, past dolphins who spun in circles just to say hello. {name} had never moved like this before — free and fast and light as thought.",
+                "scene": "a child and a mermaid swimming joyfully together through a vibrant coral reef, playful dolphins spinning nearby, shafts of golden underwater sunlight, castle-like coral formations in every colour",
+            },
+            {
+                "text": "Then they heard a small, sad sound. A baby seahorse floated alone, turning in slow circles, its tiny face crumpled with worry. 'It's lost,' said the mermaid quietly. {name} felt {his_her} heart squeeze tight.",
+                "scene": "a tiny sad baby seahorse floating alone in glowing blue water, looking lost and worried, a child and a friendly mermaid nearby looking at it with gentle concern",
+            },
+            {
+                "text": "{name} followed a trail of glowing bubbles — up, around, through a rock arch and into a meadow of swaying sea-grass. And there was the seahorse's family, waiting and waving with delight.",
+                "scene": "a child and mermaid watching joyfully as a tiny seahorse swims towards its happy waiting family in a beautiful sea-grass meadow, golden bubble trail visible, warm underwater light",
+            },
+            {
+                "text": "The fish threw a party — there was no other word for it. They sang in bubbles, danced in spirals, and brought {name} a crown woven from the most luminous shells in the sea. {He_She} put it on and felt magnificent.",
+                "scene": "a child wearing a beautiful shell crown surrounded by singing and dancing fish in a magical glowing underwater party, bubbles and light everywhere, joyful and festive underwater scene",
+            },
+            {
+                "text": "{name} woke on the beach just as the first light touched the sea. The shell was warm in {his_her} hand, still faintly glowing. {He_She} held it up to the dawn and whispered thank you. The waves whispered gently back.",
+                "scene": "a child sitting alone on a peaceful beach at dawn, holding a softly glowing shell up against the first pale light of morning, the calm sea in front of them, magical and serene",
+            },
+        ],
     },
     "Unicorn Magic 🦄": {
         "tagline": "Some friendships are truly magical.",
         "theme": "Kindness 💖",
-        "plot": (
-            "Page 1: {name} makes a wish on the brightest star before bedtime.\n"
-            "Page 2: A soft glow at the window — a unicorn is waiting, mane like moonlight.\n"
-            "Page 3: They fly through a sky full of clouds shaped like elephants and whales.\n"
-            "Page 4: They land in a meadow where flowers glow and butterflies sing tiny songs.\n"
-            "Page 5: A small fairy sits crying — her wings have lost their sparkle.\n"
-            "Page 6: {name} offers a kind word and a gentle hug — the wings flutter and shine again.\n"
-            "Page 7: The unicorn carries {name} home as the sky turns pink with dawn.\n"
-            "Page 8: {name} wakes to find a single glowing flower on the pillow — it was all real."
-        ),
+        "pages": [
+            {
+                "text": "{name} had made exactly one hundred and two wishes on the big bright star outside {his_her} window. But {he_she} had never really, truly expected any of them to come true.",
+                "scene": "a child kneeling at a bedroom window at night, gazing up at one very bright star in a dark starry sky, an expression of hopeful longing, moonlight across the bedroom, cosy and peaceful",
+            },
+            {
+                "text": "Then, softly, {his_her} window filled with silver light. {name} held very still. Standing in the garden — patient and glowing and more beautiful than anything {he_she} had ever imagined — was a unicorn with a mane like moonlight.",
+                "scene": "a magnificent white unicorn with a silver glowing mane standing in a moonlit garden below a child's window, looking up gently and calmly, magical silver light all around",
+            },
+            {
+                "text": "They flew together through a sky full of clouds shaped like whales and elephants and one very round walrus. {name} laughed with the wind in {his_her} hair and felt completely, perfectly safe.",
+                "scene": "a child riding a glowing white unicorn through a beautiful night sky, passing cloud shapes of a whale, an elephant, and a walrus, stars everywhere, the child laughing with pure joy",
+            },
+            {
+                "text": "The unicorn landed in a meadow where flowers glowed like tiny lanterns and the butterflies sang quiet little songs just to themselves. {name} walked through it all and everything felt like the best kind of dream.",
+                "scene": "a child and a white unicorn in a magical glowing night meadow, tiny lantern-like flowers all around, butterflies with softly glowing wings, moonlit and enchanted atmosphere",
+            },
+            {
+                "text": "But then {name} saw her — a tiny fairy sitting on a mushroom, wings folded flat and dull, crying the smallest of tears. 'My wings,' she whispered. 'They've lost all their sparkle. I cannot fly anymore.'",
+                "scene": "a tiny fairy sitting sadly on a large mushroom cap, her wings dull and flat, a child crouching gently at eye level looking at her with deep sympathy, moonlit magical meadow",
+            },
+            {
+                "text": "{name} sat beside her and said the kindest, truest things {he_she} could think of. And when {he_she} reached out and held the fairy's tiny hand, something marvellous happened — the wings shimmered, glittered, and blazed back to life.",
+                "scene": "a child gently holding a tiny fairy's hand, the fairy's wings suddenly blazing back to brilliant sparkle and colour, magical golden light spreading outward, joyful expression on the fairy's face",
+            },
+            {
+                "text": "The unicorn carried {name} home through a sky that was slowly turning pink with dawn. {name} felt full — full of something {he_she} did not have quite the right word for, but that felt a great deal like joy.",
+                "scene": "a child riding a white unicorn homeward through a sky turning beautiful pink and gold at dawn, peaceful and content expression, their home visible softly in the distance below",
+            },
+            {
+                "text": "{name} climbed into bed and pulled the blanket up — and there on the pillow, glowing softly like a promise kept, was a single small flower from the meadow. {He_She} closed {his_her} eyes and smiled.",
+                "scene": "a child's pillow in soft early morning light with a small glowing magical flower resting on it, the child tucked under a cosy blanket just visible at the edge, peaceful and magical",
+            },
+        ],
     },
 }
 
@@ -515,42 +661,8 @@ memory = st.session_state.character_memory
 prompt_lang = LANGUAGES[p["language"]]["prompt_lang"]
 
 # ==============================
-# BUILD STORY PROMPT
+# BUILD STORY PROMPT (custom mode only — templates use pre-baked pages)
 # ==============================
-
-def build_template_prompt(p, memory):
-    t = TEMPLATES[p["template_name"]]
-    plot_with_name = t["plot"].replace("{name}", p["name"])
-    return f"""You are an award-winning children's picture book author writing in {prompt_lang}.
-
-Write a beautifully crafted, emotionally resonant storybook. Use the plot guide below as the exact page-by-page structure, but write it with vivid, lyrical language perfectly pitched for a {p['age']}-year-old.
-
-Main character: {p['name']}, a {p['age']}-year-old {p['gender'].lower()}. Appearance: {memory}.
-
-Theme: {t['theme']}
-
-Plot guide (follow this structure exactly):
-{plot_with_name}
-
-Output each page in EXACTLY this format (plain text only — no bold, no asterisks, no markdown):
-
-Page 1
-Text: [2–3 warm, lyrical sentences in {prompt_lang}]
-Scene: [one sentence describing the illustration in English — specific setting, mood, colours, action]
-
-Page 2
-Text: ...
-Scene: ...
-
-(continue through Page 8)
-
-Rules:
-- Text must be in {prompt_lang}
-- Scene must always be in English
-- Follow the plot guide closely but write with warmth and imagination
-- End with a joyful, uplifting moment
-- Plain text only. No markdown whatsoever."""
-
 
 def build_custom_prompt(p, memory):
     details = []
@@ -623,8 +735,59 @@ def parse_story(raw):
     return []
 
 
+def build_template_pages(p, prompt_lang):
+    """
+    Template mode: substitute placeholders in pre-baked story pages.
+    For non-English: translate all 8 page texts in one GPT call (fast + cheap).
+    """
+    t = TEMPLATES[p["template_name"]]
+    if p["gender"] == "Girl":
+        pronouns = {"He_She": "She", "he_she": "she", "His_Her": "Her", "his_her": "her", "Him_Her": "Her", "him_her": "her"}
+    else:
+        pronouns = {"He_She": "He", "he_she": "he", "His_Her": "His", "his_her": "his", "Him_Her": "Him", "him_her": "him"}
+
+    pages = []
+    for pg in t["pages"]:
+        text = pg["text"].replace("{name}", p["name"])
+        for key, val in pronouns.items():
+            text = text.replace("{" + key + "}", val)
+        pages.append({"text": text, "scene": pg["scene"]})
+
+    # For vernacular: one batch translation call instead of full story generation
+    if prompt_lang != "English":
+        texts = [pg["text"] for pg in pages]
+        translation_prompt = (
+            f"Translate each of these 8 children's storybook sentences to {prompt_lang}. "
+            f"Keep the name '{p['name']}' exactly as-is. "
+            "Return ONLY the translated sentences, numbered 1–8, one per line. No extra commentary.\n\n"
+            + "\n".join(f"{i+1}. {t}" for i, t in enumerate(texts))
+        )
+        for model in ["gpt-4o", "gpt-4o-mini"]:
+            try:
+                r = openai_client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": translation_prompt}],
+                    temperature=0.2,
+                )
+                translated = [
+                    re.sub(r"^\d+[\.\-]\s*", "", line).strip()
+                    for line in r.choices[0].message.content.strip().split("\n")
+                    if line.strip()
+                ]
+                if len(translated) == 8:
+                    for i, pg in enumerate(pages):
+                        pg["text"] = translated[i]
+                break
+            except Exception as e:
+                if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
+                    continue
+                break
+
+    return pages
+
+
 def gen_story_text():
-    prompt = build_template_prompt(p, memory) if mode == "template" else build_custom_prompt(p, memory)
+    prompt = build_custom_prompt(p, memory)
     for model in ["gpt-4o", "gpt-4o-mini"]:
         try:
             resp = openai_client.chat.completions.create(
@@ -651,9 +814,85 @@ def save_image(img_bytes, index):
 
 fav_colour = p.get("fav_colour", "")
 
-def build_image_prompt(scene, memory, age, gender, fav_colour):
-    colour_note = f"wearing {fav_colour} coloured clothes," if fav_colour else ""
-    character = f"a {age} year old {gender.lower()} child, {memory}, {colour_note} consistent appearance throughout"
+# ==============================
+# CHARACTER REFERENCE (phase 1a — before page generation)
+# ==============================
+
+def generate_character_reference(memory, age, gender, fav_colour):
+    """
+    Generate one canonical character-sheet image, then use GPT-4o vision
+    to extract an ultra-precise description. All page images use this
+    anchored description for visual consistency.
+    """
+    colour_note = f"wearing {fav_colour} outfit," if fav_colour else ""
+    ref_prompt = (
+        f"Children's book character reference sheet: a {age} year old {gender.lower()} child, "
+        f"{memory}, {colour_note} "
+        f"front-facing, neutral friendly smile, full body view, plain white background, "
+        f"vibrant 3D cartoon style, Disney/Pixar inspired, high detail, no text"
+    )
+
+    # Generate reference image — Nano Banana Pro's thinking process is ideal here
+    ref_bytes = (
+        _dalle3(ref_prompt)
+        or _nano_banana_pro(ref_prompt)
+        or _qwen(ref_prompt)
+        or _nano_banana2(ref_prompt)
+    )
+    if not ref_bytes:
+        return memory   # fallback: use original description
+
+    # Save reference image
+    ref_path = "/tmp/character_ref.png"
+    with open(ref_path, "wb") as f:
+        f.write(ref_bytes)
+
+    # Ask GPT-4o vision for a precise appearance description
+    try:
+        b64 = base64.b64encode(ref_bytes).decode()
+        messages = [{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                {"type": "text", "text": (
+                    "Describe this illustrated child character's appearance with maximum precision for an artist to reproduce exactly. "
+                    "Include: exact hair colour, style and length; skin tone; eye colour; outfit (colour, style, every detail); "
+                    "any accessories. Under 40 words. No names."
+                )},
+            ],
+        }]
+        for model in ["gpt-4o", "gpt-4o-mini"]:
+            try:
+                r = openai_client.chat.completions.create(model=model, messages=messages, max_tokens=100)
+                return r.choices[0].message.content.strip()
+            except Exception as e:
+                if "PermissionDenied" in type(e).__name__ or "permission" in str(e).lower():
+                    continue
+                break
+    except Exception:
+        pass
+
+    return memory   # fallback if vision fails
+
+
+# ==============================
+# IMAGE PROMPT BUILDER
+# ==============================
+
+ANATOMY_NEGATIVE = (
+    "deformed hands, extra fingers, missing fingers, bad anatomy, "
+    "deformed feet, ugly hands, fused fingers, mutated hands, "
+    "photorealistic, dark, scary, text, watermark, blurry, deformed, ugly, low quality, sketch, grayscale"
+)
+
+def build_image_prompt(scene, anchored_memory, age, gender, fav_colour):
+    colour_note = f"wearing {fav_colour} outfit," if fav_colour else ""
+    character = (
+        f"a {age} year old {gender.lower()} child, {anchored_memory}, {colour_note}"
+        f"exact same character design on every page"
+    )
+    # Force medium/wide shots in the style tag to avoid anatomy-heavy close-ups
+    framing = "medium shot or wide shot, full scene visible, no extreme close-ups of hands or feet"
     style = (
         "vibrant children's book illustration, 3D cartoon style, "
         "bright saturated colors, Disney and Pixar inspired art, "
@@ -661,63 +900,112 @@ def build_image_prompt(scene, memory, age, gender, fav_colour):
         "rich detailed colorful background, warm cheerful lighting, "
         "high quality digital art, playful and charming"
     )
-    negative = "photorealistic, dark, scary, text, watermark, blurry, deformed, ugly, low quality, sketch, grayscale"
-    return f"{character}, {scene}, {style}", negative
+    return f"{character}, {scene}, {framing}, {style}", ANATOMY_NEGATIVE
 
 
-def generate_image_gemini_flash(prompt_text):
-    """Gemini 2.0 Flash image generation (experimental)."""
-    if not google_client:
-        return None
+# ==============================
+# IMAGE GENERATORS
+# ==============================
+
+def _dalle3(prompt_text):
+    """DALL-E 3 — best anatomy, ~$0.04/image."""
     try:
-        from google.genai import types as gtypes
-        response = google_client.models.generate_content(
-            model="gemini-2.0-flash-preview-image-generation",
-            contents=prompt_text,
-            config=gtypes.GenerateContentConfig(
-                response_modalities=["IMAGE", "TEXT"],
-            ),
+        resp = openai_client.images.generate(
+            model="dall-e-3",
+            prompt=prompt_text[:4000],   # DALL-E 3 prompt limit
+            size="1792x1024",
+            quality="standard",
+            n=1,
         )
-        for part in response.candidates[0].content.parts:
-            if hasattr(part, "inline_data") and part.inline_data is not None:
-                return part.inline_data.data
+        url = resp.data[0].url
+        r = requests.get(url, timeout=60)
+        if r.status_code == 200 and len(r.content) > 5000:
+            return r.content
     except Exception:
         pass
     return None
 
 
-def generate_image_imagen3(prompt_text):
-    """Imagen 3 — Google's dedicated image generation model."""
-    if not google_client:
+def _qwen(prompt_text):
+    """Alibaba Qwen Wanx image generation via DashScope."""
+    if not DASHSCOPE_API_KEY:
         return None
     try:
-        from google.genai import types as gtypes
-        response = google_client.models.generate_images(
-            model="imagen-3.0-generate-001",
-            prompt=prompt_text,
-            config=gtypes.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="3:2",
-                safety_filter_level="block_some",
-                person_generation="allow_all",
-            ),
+        import dashscope
+        from dashscope import ImageSynthesis
+        dashscope.api_key = DASHSCOPE_API_KEY
+        rsp = ImageSynthesis.call(
+            model="wanx2.1-t2i-turbo",
+            prompt=prompt_text[:800],
+            n=1,
+            size="1280*720",
         )
-        if response.generated_images:
-            return response.generated_images[0].image.image_bytes
+        if rsp.status_code == 200 and rsp.output.results:
+            url = rsp.output.results[0].url
+            r = requests.get(url, timeout=60)
+            if r.status_code == 200 and len(r.content) > 5000:
+                return r.content
     except Exception:
         pass
     return None
 
 
-def generate_image_hf(prompt_text, negative):
+def _nano_banana_pro(prompt_text):
+    """Nano Banana Pro (gemini-3-pro-image-preview) — thinking model, best quality for reference sheets."""
+    if not google_client:
+        return None
+    try:
+        interaction = google_client.interactions.create(
+            model="gemini-3-pro-image-preview",
+            input=prompt_text[:4000],
+        )
+        if interaction.output_image and interaction.output_image.data:
+            return base64.b64decode(interaction.output_image.data)
+    except Exception:
+        pass
+    return None
+
+
+def _nano_banana2(prompt_text):
+    """Nano Banana 2 (gemini-3.1-flash-image-preview) — fast, high quality for page illustrations."""
+    if not google_client:
+        return None
+    try:
+        interaction = google_client.interactions.create(
+            model="gemini-3.1-flash-image-preview",
+            input=prompt_text[:4000],
+        )
+        if interaction.output_image and interaction.output_image.data:
+            return base64.b64decode(interaction.output_image.data)
+    except Exception:
+        pass
+    return None
+
+
+def _nano_banana_fast(prompt_text):
+    """Nano Banana (gemini-2.5-flash-image) — speed fallback, low latency."""
+    if not google_client:
+        return None
+    try:
+        interaction = google_client.interactions.create(
+            model="gemini-2.5-flash-image",
+            input=prompt_text[:4000],
+        )
+        if interaction.output_image and interaction.output_image.data:
+            return base64.b64decode(interaction.output_image.data)
+    except Exception:
+        pass
+    return None
+
+
+def _hf(prompt_text, negative):
     if not HF_TOKEN:
         return None
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    payload = {
-        "inputs": prompt_text,
-        "parameters": {"negative_prompt": negative, "width": 768, "height": 512,
-                       "num_inference_steps": 30, "guidance_scale": 7.5},
-    }
+    payload = {"inputs": prompt_text, "parameters": {
+        "negative_prompt": negative, "width": 768, "height": 512,
+        "num_inference_steps": 30, "guidance_scale": 7.5,
+    }}
     for attempt in range(3):
         try:
             r = requests.post(HF_API_URL, headers=headers, json=payload, timeout=120)
@@ -730,33 +1018,21 @@ def generate_image_hf(prompt_text, negative):
     return None
 
 
-def generate_image_pollinations(scene, memory, age, gender, fav_colour):
-    prompt_text, _ = build_image_prompt(scene, memory, age, gender, fav_colour)
-    encoded = urllib.parse.quote(prompt_text)
-    seed = abs(hash(scene)) % 99999
-    url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=512&seed={seed}&nologo=true"
-    try:
-        r = requests.get(url, timeout=35)
-        if r.status_code == 200 and len(r.content) > 5000:
-            return r.content
-    except Exception:
-        pass
-    return None
-
-
-def get_image(scene, memory, age, gender, fav_colour):
-    """Try all image generators in order. Retry Pollinations up to 3x to guarantee an image."""
-    prompt_text, negative = build_image_prompt(scene, memory, age, gender, fav_colour)
+def get_image(scene, anchored_memory, age, gender, fav_colour):
+    """Fallback chain: DALL-E 3 → Qwen → Nano Banana 2 → Nano Banana Fast → SDXL → Pollinations."""
+    prompt_text, negative = build_image_prompt(scene, anchored_memory, age, gender, fav_colour)
 
     img = (
-        generate_image_gemini_flash(prompt_text)
-        or generate_image_imagen3(prompt_text)
-        or generate_image_hf(prompt_text, negative)
+        _dalle3(prompt_text)
+        or _qwen(prompt_text)
+        or _nano_banana2(prompt_text)
+        or _nano_banana_fast(prompt_text)
+        or _hf(prompt_text, negative)
     )
     if img:
         return img
 
-    # Pollinations with retries — vary seed each attempt for a fresh result
+    # Pollinations with retries
     for attempt in range(3):
         encoded = urllib.parse.quote(prompt_text)
         seed = (abs(hash(scene)) + attempt * 7919) % 99999
@@ -767,8 +1043,7 @@ def get_image(scene, memory, age, gender, fav_colour):
                 return r.content
         except Exception:
             time.sleep(3)
-
-    return None  # should rarely reach here
+    return None
 
 
 name     = p["name"]
@@ -815,22 +1090,35 @@ def create_pdf(pages, name, theme, language):
 
 if not st.session_state.get("_preview_done"):
     prog = st.progress(0, text="Weaving the story...")
-    story_text = gen_story_text()
-    if not story_text:
-        st.error("Could not generate story. Check your OpenAI API key.")
-        st.stop()
 
-    pages = parse_story(story_text)
-    if not pages:
-        st.error("Story format was unexpected. Please try again.")
-        del st.session_state["_mode"]
-        st.stop()
+    if mode == "template":
+        # Pre-baked: no GPT story call needed (instant for English, one translation call for vernacular)
+        pages = build_template_pages(p, prompt_lang)
+        if not pages:
+            st.error("Could not load story template. Please try again.")
+            del st.session_state["_mode"]
+            st.stop()
+    else:
+        story_text = gen_story_text()
+        if not story_text:
+            st.error("Could not generate story. Check your OpenAI API key.")
+            st.stop()
+        pages = parse_story(story_text)
+        if not pages:
+            st.error("Story format was unexpected. Please try again.")
+            del st.session_state["_mode"]
+            st.stop()
+
+    # Generate character reference image for visual consistency
+    prog.progress(15, text="Creating character reference for consistency...")
+    anchored_memory = generate_character_reference(memory, age, gender, fav_colour)
+    st.session_state["_anchored_memory"] = anchored_memory
 
     prog.progress(25, text=f"Story written! Illustrating first {PREVIEW_PAGES} pages for preview...")
 
     for i in range(min(PREVIEW_PAGES, len(pages))):
         prog.progress(25 + int((i + 1) / PREVIEW_PAGES * 70), text=f"Illustrating preview page {i+1}...")
-        img = get_image(pages[i]["scene"], memory, age, gender, fav_colour)
+        img = get_image(pages[i]["scene"], anchored_memory, age, gender, fav_colour)
         pages[i]["image_path"] = save_image(img, i) if img else None
 
     prog.progress(100, text="Preview ready!")
@@ -892,6 +1180,7 @@ if st.session_state.get("_preview_done") and not st.session_state.get("_finalize
 # ==============================
 
 pages = st.session_state["_preview_pages"]
+anchored_memory = st.session_state.get("_anchored_memory", memory)
 
 prog = st.progress(0, text="Generating remaining illustrations...")
 remaining_indices = [i for i in range(len(pages)) if i >= PREVIEW_PAGES or not pages[i].get("image_path")]
@@ -899,7 +1188,7 @@ remaining_indices = [i for i in range(len(pages)) if i >= PREVIEW_PAGES or not p
 for step, i in enumerate(remaining_indices):
     pct = int((step + 1) / max(len(remaining_indices), 1) * 85)
     prog.progress(pct, text=f"Illustrating page {i+1} of {len(pages)}...")
-    img = get_image(pages[i]["scene"], memory, age, gender, fav_colour)
+    img = get_image(pages[i]["scene"], anchored_memory, age, gender, fav_colour)
     pages[i]["image_path"] = save_image(img, i) if img else None
 
 prog.progress(90, text="Binding your storybook...")
